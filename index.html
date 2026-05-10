@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>💵에셋 모으기💵</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap');
@@ -424,6 +427,7 @@ td a:hover { text-decoration:underline; }
 <div class="tabs">
   <div class="tab active" data-tab="channel" onclick="switchTab('channel')">📺 채널 벤치마킹</div>
   <div class="tab" data-tab="source" onclick="switchTab('source')">🎬 소재 스크랩</div>
+  <div class="tab" data-tab="bgm" onclick="switchTab('bgm')">🎵 BGM 모음</div>
 </div>
 
 <!-- MAIN -->
@@ -544,6 +548,60 @@ td a:hover { text-decoration:underline; }
           <tbody id="src-tbody"></tbody>
         </table>
         <div class="no-data" id="src-nodata">저장된 소재가 없습니다</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BGM TAB -->
+  <div id="tab-bgm" class="tab-content" style="display:none;">
+    <div class="input-section">
+      <div class="input-row">
+        <input class="input-field" id="bgm-url" placeholder="유튜브 링크 (또는 다른 출처)">
+        <button class="btn btn-primary" onclick="fetchBgm()">불러오기</button>
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="bgm-title" placeholder="곡명 (자동 입력 후 수정 가능)">
+      </div>
+      <div class="input-row">
+        <div class="ct-dropdown-wrap">
+          <button class="ct-dropdown-trigger" id="bgm-mood-trigger" onclick="toggleMoodDropdown()">
+            <span id="bgm-mood-label">분위기 선택</span>
+            <span>▾</span>
+          </button>
+          <div class="ct-dropdown-panel" id="bgm-mood-panel"></div>
+        </div>
+        <input class="input-field" id="bgm-memo" placeholder="메모 (사용한 영상, 특징 등)">
+      </div>
+      <div class="input-row">
+        <button class="btn btn-primary" onclick="saveBgm()" style="margin-left:auto;">저장</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search-box" id="bgm-search" placeholder="🔍 검색..." oninput="renderBgmTable()">
+      <select class="filter-select" id="bgm-filter" onchange="renderBgmTable()">
+        <option value="">전체 분위기</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('bgm')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bgm-csv-input').click()">📤 가져오기</button>
+      <input type="file" id="bgm-csv-input" accept=".csv" style="display:none" onchange="importCSV('bgm',this)">
+      <span class="item-count" id="bgm-count"></span>
+    </div>
+    <div class="table-wrap">
+      <div class="table-container">
+        <table id="bgm-table">
+          <thead>
+            <tr>
+              <th onclick="sortBgm('title')">곡명 <span class="sort-arrow" id="bgm-sort-title"></span></th>
+              <th onclick="sortBgm('mood')">분위기 <span class="sort-arrow" id="bgm-sort-mood"></span></th>
+              <th>메모</th>
+              <th>링크</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody id="bgm-tbody"></tbody>
+        </table>
+        <div class="no-data" id="bgm-nodata">저장된 BGM이 없습니다</div>
       </div>
     </div>
   </div>
@@ -669,6 +727,12 @@ let channels = JSON.parse(localStorage.getItem('dontong_channels') || '[]');
 let sources = JSON.parse(localStorage.getItem('dontong_sources') || '[]');
 let customTypes = JSON.parse(localStorage.getItem('dontong_ctypes') || '[]');
 let favTypes = JSON.parse(localStorage.getItem('dontong_favtypes') || '[]');
+let bgms = JSON.parse(localStorage.getItem('dontong_bgms') || '[]');
+let customMoods = JSON.parse(localStorage.getItem('dontong_bgm_moods') || '[]');
+let favMoods = JSON.parse(localStorage.getItem('dontong_bgm_favmoods') || '[]');
+let bgmSelectedMood = '';
+let bgmSort = { key: null, asc: true };
+const DEFAULT_MOODS = ['긴장감','슬픔','잔잔','신남','감동','긴박','몽환','유머','공포','웅장'];
 let chSort = { key: null, asc: true };
 let srcSort = { key: null, asc: true };
 let chSelectedType = '';
@@ -681,7 +745,9 @@ document.addEventListener('DOMContentLoaded', () => {
   updateUsageUI();
   renderChannelTable();
   renderSourceTable();
+  renderBgmTable();
   updateFilterOptions();
+  updateBgmFilterOptions();
 });
 
 
@@ -704,6 +770,255 @@ function switchTab(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
   document.getElementById('tab-channel').style.display = tab === 'channel' ? '' : 'none';
   document.getElementById('tab-source').style.display = tab === 'source' ? '' : 'none';
+  document.getElementById('tab-bgm').style.display = tab === 'bgm' ? '' : 'none';
+}
+
+// ===== BGM =====
+async function fetchBgm() {
+  const key = getApiKey();
+  if (!key) {
+    toast('API 키를 먼저 설정해주세요', 'error');
+    openApiModal();
+    return;
+  }
+  const raw = document.getElementById('bgm-url').value.trim();
+  if (!raw) { toast('링크를 입력해주세요', 'error'); return; }
+
+  const videoId = extractYouTubeId(raw);
+  if (!videoId) { toast('올바른 유튜브 링크를 입력해주세요', 'error'); return; }
+
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API 오류: ' + res.status);
+    const data = await res.json();
+    addUsage(1);
+
+    if (!data.items || !data.items.length) { toast('영상을 찾을 수 없습니다', 'error'); return; }
+
+    const v = data.items[0];
+    document.getElementById('bgm-title').value = v.snippet.title;
+    toast(`✅ "${v.snippet.title}" 불러옴`, 'success');
+  } catch(e) {
+    toast('오류: ' + e.message, 'error');
+  }
+}
+
+function saveBgm() {
+  const title = document.getElementById('bgm-title').value.trim();
+  const url = document.getElementById('bgm-url').value.trim();
+  const memo = document.getElementById('bgm-memo').value.trim();
+  if (!title) { toast('곡명을 입력하세요', 'error'); return; }
+
+  const item = {
+    id: Date.now(),
+    title, url, memo,
+    mood: bgmSelectedMood || '',
+    fav: false,
+    date: new Date().toISOString()
+  };
+  bgms.unshift(item);
+  localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
+
+  // 입력 초기화
+  document.getElementById('bgm-title').value = '';
+  document.getElementById('bgm-url').value = '';
+  document.getElementById('bgm-memo').value = '';
+  bgmSelectedMood = '';
+  document.getElementById('bgm-mood-label').textContent = '분위기 선택';
+
+  renderBgmTable();
+  updateBgmFilterOptions();
+  toast('BGM 저장 완료', 'success');
+}
+
+function renderBgmTable() {
+  const search = document.getElementById('bgm-search').value.toLowerCase();
+  const filter = document.getElementById('bgm-filter').value;
+  let data = bgms.filter(b => {
+    if (filter && b.mood !== filter) return false;
+    if (search) {
+      return (b.title||'').toLowerCase().includes(search) ||
+             (b.mood||'').toLowerCase().includes(search) ||
+             (b.memo||'').toLowerCase().includes(search);
+    }
+    return true;
+  });
+
+  if (bgmSort.key) {
+    data.sort((a,b) => {
+      let va = a[bgmSort.key], vb = b[bgmSort.key];
+      va = (va||'').toString().toLowerCase();
+      vb = (vb||'').toString().toLowerCase();
+      return bgmSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+
+  const tbody = document.getElementById('bgm-tbody');
+  const nodata = document.getElementById('bgm-nodata');
+  document.getElementById('bgm-count').textContent = `${data.length}개`;
+
+  if (!data.length) {
+    tbody.innerHTML = '';
+    nodata.style.display = '';
+    return;
+  }
+  nodata.style.display = 'none';
+
+  tbody.innerHTML = data.map(b => {
+    const linkBtn = b.url
+      ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="text-decoration:none;font-size:18px;">▶️</a>`
+      : '';
+    const favIcon = b.fav ? '⭐' : '☆';
+    return `
+    <tr>
+      <td>${esc(b.title)}</td>
+      <td>${esc(b.mood||'-')}</td>
+      <td>${esc(b.memo||'-')}</td>
+      <td>${linkBtn}</td>
+      <td class="cell-actions">
+        <button onclick="toggleFavItem('bgm',${b.id})" title="즐겨찾기">${favIcon}</button>
+        <button onclick="editItem('bgm',${b.id})" title="수정">✏️</button>
+        <button onclick="deleteItem('bgm',${b.id})" title="삭제">🗑️</button>
+      </td>
+    </tr>
+  `;
+  }).join('');
+}
+
+// 유튜브 ID 추출 (다양한 URL 형식 지원)
+function extractYouTubeId(url) {
+  if (!url) return '';
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
+  }
+  return '';
+}
+
+// BGM 분위기 드롭다운
+function toggleMoodDropdown() {
+  const panel = document.getElementById('bgm-mood-panel');
+  const wasOpen = panel.classList.contains('open');
+  document.querySelectorAll('.ct-dropdown-panel').forEach(p => p.classList.remove('open'));
+  if (!wasOpen) {
+    buildMoodDropdown();
+    panel.classList.add('open');
+  }
+}
+
+function buildMoodDropdown() {
+  const panel = document.getElementById('bgm-mood-panel');
+  let html = '';
+
+  // Custom input
+  html += `<div class="ct-custom-input">
+    <input id="bgm-mood-custom-input" placeholder="직접 입력">
+    <button onclick="addCustomMood()">추가</button>
+  </div>`;
+
+  // Favorites
+  if (favMoods.length) {
+    html += `<div class="ct-section-label">⭐ 즐겨찾기</div>`;
+    favMoods.forEach(t => {
+      html += moodOptionHTML(t, true, customMoods.includes(t));
+    });
+  }
+
+  // Custom moods
+  const nonFavCustom = customMoods.filter(t => !favMoods.includes(t));
+  if (nonFavCustom.length) {
+    html += `<div class="ct-section-label">📝 직접 입력</div>`;
+    nonFavCustom.forEach(t => {
+      html += moodOptionHTML(t, false, true);
+    });
+  }
+
+  // Default moods
+  html += `<div class="ct-section-label">🎵 기본 분위기</div>`;
+  DEFAULT_MOODS.forEach(t => {
+    if (!favMoods.includes(t)) {
+      html += moodOptionHTML(t, false, false);
+    }
+  });
+
+  panel.innerHTML = html;
+}
+
+function moodOptionHTML(text, isFav, isCustom) {
+  const sel = text === bgmSelectedMood ? ' selected' : '';
+  const favIcon = favMoods.includes(text) ? '★' : '☆';
+  let actions = `<span class="ct-option-actions">
+    <button onclick="event.stopPropagation();toggleFavMood('${esc(text)}')" title="즐겨찾기">${favIcon}</button>`;
+  if (isCustom) {
+    actions += `<button onclick="event.stopPropagation();editCustomMood('${esc(text)}')" title="수정">✏️</button>`;
+    actions += `<button onclick="event.stopPropagation();deleteCustomMood('${esc(text)}')" title="삭제">🗑</button>`;
+  }
+  actions += `</span>`;
+  return `<div class="ct-option${sel}" onclick="selectMood('${esc(text)}')">
+    <span>${esc(text)}</span>${actions}</div>`;
+}
+
+function selectMood(mood) {
+  bgmSelectedMood = mood;
+  document.getElementById('bgm-mood-label').textContent = mood;
+  document.querySelectorAll('.ct-dropdown-panel').forEach(p => p.classList.remove('open'));
+}
+
+function addCustomMood() {
+  const input = document.getElementById('bgm-mood-custom-input');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!customMoods.includes(val) && !DEFAULT_MOODS.includes(val)) {
+    customMoods.push(val);
+    localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
+  }
+  selectMood(val);
+  updateBgmFilterOptions();
+}
+
+function toggleFavMood(mood) {
+  if (favMoods.includes(mood)) favMoods = favMoods.filter(t => t !== mood);
+  else favMoods.push(mood);
+  localStorage.setItem('dontong_bgm_favmoods', JSON.stringify(favMoods));
+  buildMoodDropdown();
+}
+
+function deleteCustomMood(mood) {
+  customMoods = customMoods.filter(t => t !== mood);
+  favMoods = favMoods.filter(t => t !== mood);
+  localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
+  localStorage.setItem('dontong_bgm_favmoods', JSON.stringify(favMoods));
+  buildMoodDropdown();
+  updateBgmFilterOptions();
+}
+
+function editCustomMood(oldMood) {
+  const newMood = prompt('새 이름 입력:', oldMood);
+  if (!newMood || newMood === oldMood) return;
+  customMoods = customMoods.map(t => t === oldMood ? newMood : t);
+  favMoods = favMoods.map(t => t === oldMood ? newMood : t);
+  bgms.forEach(b => { if (b.mood === oldMood) b.mood = newMood; });
+  localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
+  localStorage.setItem('dontong_bgm_favmoods', JSON.stringify(favMoods));
+  localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
+  buildMoodDropdown();
+  renderBgmTable(); updateBgmFilterOptions();
+}
+
+function updateBgmFilterOptions() {
+  const allMoods = new Set();
+  bgms.forEach(b => b.mood && allMoods.add(b.mood));
+  customMoods.forEach(t => allMoods.add(t));
+  DEFAULT_MOODS.forEach(t => allMoods.add(t));
+  const sel = document.getElementById('bgm-filter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">전체 분위기</option>' +
+    [...allMoods].sort().map(t => `<option value="${esc(t)}"${t===cur?' selected':''}>${esc(t)}</option>`).join('');
 }
 
 // ===== API KEY =====
@@ -1117,6 +1432,12 @@ function sortSource(key) {
   updateSortArrows('src', srcSort);
   renderSourceTable();
 }
+function sortBgm(key) {
+  if (bgmSort.key === key) bgmSort.asc = !bgmSort.asc;
+  else { bgmSort.key = key; bgmSort.asc = true; }
+  updateSortArrows('bgm', bgmSort);
+  renderBgmTable();
+}
 function updateSortArrows(prefix, sortState) {
   document.querySelectorAll(`[id^="${prefix}-sort-"]`).forEach(el => el.textContent = '');
   if (sortState.key) {
@@ -1132,32 +1453,46 @@ function deleteItem(tab, id) {
     channels = channels.filter(c => c.id !== id);
     localStorage.setItem('dontong_channels', JSON.stringify(channels));
     renderChannelTable();
+  } else if (tab === 'bgm') {
+    bgms = bgms.filter(b => b.id !== id);
+    localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
+    renderBgmTable();
+    updateBgmFilterOptions();
   } else {
     sources = sources.filter(s => s.id !== id);
     localStorage.setItem('dontong_sources', JSON.stringify(sources));
     renderSourceTable();
   }
-  updateFilterOptions();
+  if (tab !== 'bgm') updateFilterOptions();
   toast('삭제 완료');
 }
 
 function toggleFavItem(tab, id) {
-  const list = tab === 'channel' ? channels : sources;
+  let list, key;
+  if (tab === 'channel') { list = channels; key = 'dontong_channels'; }
+  else if (tab === 'bgm') { list = bgms; key = 'dontong_bgms'; }
+  else { list = sources; key = 'dontong_sources'; }
   const item = list.find(x => x.id === id);
   if (item) {
     item.fav = !item.fav;
-    localStorage.setItem(tab === 'channel' ? 'dontong_channels' : 'dontong_sources', JSON.stringify(list));
+    localStorage.setItem(key, JSON.stringify(list));
     toast(item.fav ? '⭐ 즐겨찾기 추가' : '즐겨찾기 해제');
   }
 }
 
 // ===== EDIT =====
 function editItem(tab, id) {
-  const list = tab === 'channel' ? channels : sources;
+  let list;
+  if (tab === 'channel') list = channels;
+  else if (tab === 'bgm') list = bgms;
+  else list = sources;
   const item = list.find(x => x.id === id);
   if (!item) return;
 
-  document.getElementById('editModalTitle').textContent = tab === 'channel' ? '채널 수정' : '소재 수정';
+  let titleText = '소재 수정';
+  if (tab === 'channel') titleText = '채널 수정';
+  else if (tab === 'bgm') titleText = 'BGM 수정';
+  document.getElementById('editModalTitle').textContent = titleText;
   const body = document.getElementById('editModalBody');
 
   if (tab === 'channel') {
@@ -1174,6 +1509,28 @@ function editItem(tab, id) {
       item.style = document.getElementById('edit-style').value.trim();
       localStorage.setItem('dontong_channels', JSON.stringify(channels));
       renderChannelTable(); updateFilterOptions(); closeEditModal();
+      toast('수정 완료', 'success');
+    };
+  } else if (tab === 'bgm') {
+    body.innerHTML = `
+      <input class="input-field" id="edit-title" value="${esc(item.title||'')}" placeholder="곡명">
+      <input class="input-field" id="edit-url" value="${esc(item.url||'')}" placeholder="링크">
+      <input class="input-field" id="edit-mood" value="${esc(item.mood||'')}" placeholder="분위기">
+      <textarea class="input-field" id="edit-memo" placeholder="메모">${esc(item.memo||'')}</textarea>
+    `;
+    document.getElementById('editModalSave').onclick = () => {
+      item.title = document.getElementById('edit-title').value.trim();
+      item.url = document.getElementById('edit-url').value.trim();
+      const newMood = document.getElementById('edit-mood').value.trim();
+      // 새 분위기면 customMoods에 추가
+      if (newMood && !DEFAULT_MOODS.includes(newMood) && !customMoods.includes(newMood)) {
+        customMoods.push(newMood);
+        localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
+      }
+      item.mood = newMood;
+      item.memo = document.getElementById('edit-memo').value.trim();
+      localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
+      renderBgmTable(); updateBgmFilterOptions(); closeEditModal();
       toast('수정 완료', 'success');
     };
   } else {
@@ -1350,6 +1707,12 @@ function downloadCSV(tab) {
       csv += [c.name,c.subs,c.videos,c.views,avg,c.type,c.reason,c.ref,c.style,c.url]
         .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
     });
+  } else if (tab === 'bgm') {
+    csv = '곡명,분위기,메모,링크\n';
+    bgms.forEach(b => {
+      csv += [b.title,b.mood,b.memo,b.url]
+        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+    });
   } else {
     csv = '제목,채널,업로드일,조회수,유형,스크랩이유,내용,결,링크\n';
     sources.forEach(s => {
@@ -1361,7 +1724,10 @@ function downloadCSV(tab) {
   const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `돈통_${tab === 'channel' ? '채널' : '소재'}_${new Date().toISOString().slice(0,10)}.csv`;
+  let label = '소재';
+  if (tab === 'channel') label = '채널';
+  else if (tab === 'bgm') label = 'BGM';
+  a.download = `에셋_${label}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
 
@@ -1398,6 +1764,29 @@ function importCSV(tab, inputEl) {
       }
       localStorage.setItem('dontong_channels', JSON.stringify(channels));
       renderChannelTable();
+    } else if (tab === 'bgm') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.length < 4) continue;
+        const [title,mood,memo,url] = r;
+        // 중복 체크: 같은 곡명이면 건너뛰기
+        if (bgms.some(b => b.title === title)) { skipped++; continue; }
+        // 새 분위기면 customMoods에 추가
+        if (mood && !DEFAULT_MOODS.includes(mood) && !customMoods.includes(mood)) {
+          customMoods.push(mood);
+        }
+        bgms.push({
+          id: Date.now() + i,
+          title, mood, memo, url,
+          fav: false,
+          date: new Date().toISOString()
+        });
+        added++;
+      }
+      localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
+      localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
+      renderBgmTable();
+      updateBgmFilterOptions();
     } else {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
@@ -1418,7 +1807,7 @@ function importCSV(tab, inputEl) {
       localStorage.setItem('dontong_sources', JSON.stringify(sources));
       renderSourceTable();
     }
-    updateFilterOptions();
+    if (tab !== 'bgm') updateFilterOptions();
     toast(`✅ ${added}개 추가, ${skipped}개 중복 건너뜀`, 'success');
   };
   reader.readAsText(file, 'UTF-8');
