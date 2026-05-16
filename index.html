@@ -394,13 +394,75 @@ td a:hover { text-decoration:underline; }
 
 /* === Responsive === */
 @media (max-width:768px) {
-  .header { padding:10px 14px; }
-  .header-title { font-size:22px; }
-  .main { padding:14px; }
-  .input-row { flex-direction:column; }
-  .toolbar { flex-direction:column; }
+  /* 헤더: 한 줄 유지, 제목 작게, 양옆 컴팩트 */
+  .header {
+    padding:10px 12px;
+    gap:8px;
+  }
+  .header-logo { height:28px; }
+  .header-title {
+    position:static;
+    transform:none;
+    left:auto;
+    font-size:16px;
+    flex:1;
+    justify-content:center;
+    gap:0;
+  }
+  .header-title .title-emoji { font-size:14px; }
+  .btn-api-key {
+    font-size:11px;
+    padding:6px 8px;
+    gap:4px;
+  }
+  .btn-api-key .dot { width:6px; height:6px; }
+
+  /* 탭 */
+  .tab { font-size:13px; padding:10px 8px; }
+
+  /* 메인 */
+  .main { padding:12px; }
+
+  /* 입력 영역: 세로 정렬하되 저장 버튼은 풀너비 */
+  .input-row { flex-direction:column; gap:8px; }
+  .input-row .btn { width:100%; }
+
+  /* 툴바: 검색은 풀너비, 나머지(필터/버튼/개수)는 한 줄에 */
+  .toolbar {
+    flex-direction:row;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:8px;
+  }
+  .toolbar .search-box {
+    flex:1 1 100%;
+    width:100%;
+  }
+  .toolbar .filter-select {
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .toolbar .btn-sm {
+    padding:8px 12px;
+    font-size:12px;
+    flex:0 0 auto;
+  }
+  .toolbar .item-count {
+    font-size:12px;
+    margin-left:auto;
+  }
+
+  /* 테이블 */
   table { font-size:12px; }
-  thead th, tbody td { padding:8px 10px; }
+  thead th, tbody td { padding:8px 6px; }
+}
+
+@media (max-width:480px) {
+  .header-title { font-size:14px; }
+  .header-logo { height:24px; }
+  .btn-api-key span:not(.dot) { display:none; }
+  .btn-api-key::after { content:"🔑"; font-size:14px; }
+  .btn-api-key { padding:6px 8px; }
 }
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=marijuana3">
