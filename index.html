@@ -392,6 +392,36 @@ td a:hover { text-decoration:underline; }
 /* === EDIT MODAL === */
 .edit-modal .input-field { margin-bottom:10px; }
 
+/* === 소재 썸네일 === */
+.src-title-cell {
+  display:flex; align-items:center; gap:10px;
+}
+.src-thumb-wrap {
+  position:relative;
+  flex-shrink:0;
+}
+.src-thumb {
+  width:60px; height:60px;
+  object-fit:cover;
+  border-radius:4px;
+  background:#000;
+  cursor:pointer;
+  display:block;
+}
+#srcThumbPopup {
+  display:none;
+  position:fixed;
+  width:320px;
+  border-radius:8px;
+  border:2px solid var(--accent);
+  box-shadow:0 8px 24px rgba(0,0,0,0.8);
+  z-index:9999;
+  background:#000;
+  pointer-events:none;
+}
+#srcThumbPopup.open { display:block; }
+.src-title-text { flex:1; min-width:0; }
+
 /* === Responsive === */
 @media (max-width:768px) {
   /* 헤더: 한 줄 유지, 제목 작게, 양옆 컴팩트 */
@@ -455,6 +485,11 @@ td a:hover { text-decoration:underline; }
   /* 테이블 */
   table { font-size:12px; }
   thead th, tbody td { padding:8px 6px; }
+
+  /* 소재 썸네일 모바일에서는 호버 팝업 끄고 크기 축소 */
+  .src-thumb { width:44px; height:44px; }
+  #srcThumbPopup { display:none !important; }
+  .src-title-cell { gap:6px; }
 }
 
 @media (max-width:480px) {
@@ -773,6 +808,9 @@ td a:hover { text-decoration:underline; }
 
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- 소재 썸네일 호버 팝업 -->
+<img id="srcThumbPopup" alt="">
 
 <script>
 // ===== CONFIG =====
@@ -1462,9 +1500,28 @@ function renderSourceTable() {
   }
   nodata.style.display = 'none';
 
-  tbody.innerHTML = data.map(s => `
+  tbody.innerHTML = data.map(s => {
+    const vid = s.videoId || extractYouTubeId(s.url);
+    const thumbHtml = vid
+      ? `<div class="src-thumb-wrap"
+          onmouseenter="showSrcThumb(event, '${vid}')"
+          onmousemove="moveSrcThumb(event)"
+          onmouseleave="hideSrcThumb()">
+          <img class="src-thumb" src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" 
+            onerror="this.style.display='none'" alt="">
+        </div>`
+      : '';
+    const linkUrl = vid ? `https://www.youtube.com/shorts/${vid}` : (s.url || '#');
+    return `
     <tr>
-      <td><a href="https://www.youtube.com/shorts/${s.videoId}" target="_blank">${esc(s.title)}</a></td>
+      <td>
+        <div class="src-title-cell">
+          ${thumbHtml}
+          <div class="src-title-text">
+            <a href="${esc(linkUrl)}" target="_blank">${esc(s.title)}</a>
+          </div>
+        </div>
+      </td>
       <td>${esc(s.channel||'-')}</td>
       <td>${fmtDate(s.uploadDate)}</td>
       <td>${fmtNum(s.views)}</td>
@@ -1478,7 +1535,33 @@ function renderSourceTable() {
         <button onclick="deleteItem('source',${s.id})" title="삭제">🗑️</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
+}
+
+// ===== 소재 썸네일 호버 팝업 =====
+function showSrcThumb(e, vid) {
+  const popup = document.getElementById('srcThumbPopup');
+  popup.src = `https://img.youtube.com/vi/${vid}/hqdefault.jpg`;
+  popup.classList.add('open');
+  moveSrcThumb(e);
+}
+function moveSrcThumb(e) {
+  const popup = document.getElementById('srcThumbPopup');
+  if (!popup.classList.contains('open')) return;
+  const w = popup.offsetWidth || 320;
+  const h = popup.offsetHeight || 240;
+  let x = e.clientX + 20;
+  let y = e.clientY + 20;
+  // 화면 밖으로 안 나가게
+  if (x + w > window.innerWidth) x = e.clientX - w - 20;
+  if (y + h > window.innerHeight) y = window.innerHeight - h - 10;
+  if (y < 10) y = 10;
+  popup.style.left = x + 'px';
+  popup.style.top = y + 'px';
+}
+function hideSrcThumb() {
+  document.getElementById('srcThumbPopup').classList.remove('open');
 }
 
 // ===== SORTING =====
