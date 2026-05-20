@@ -985,10 +985,13 @@ function renderBgmTable() {
 
   tbody.innerHTML = data.map(b => {
     const ytId = extractYouTubeId(b.url);
-    const thumbHtml = ytId
+    const thumbImg = ytId
       ? `<img class="bgm-thumb" src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" 
           onerror="this.style.display='none'" alt="">`
       : '';
+    const thumbHtml = (thumbImg && b.url)
+      ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="display:block;flex-shrink:0;">${thumbImg}</a>`
+      : thumbImg;
     const linkBtn = b.url
       ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="text-decoration:none;font-size:18px;">▶️</a>`
       : '';
