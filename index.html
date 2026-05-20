@@ -422,6 +422,20 @@ td a:hover { text-decoration:underline; }
 #srcThumbPopup.open { display:block; }
 .src-title-text { flex:1; min-width:0; }
 
+/* === BGM 썸네일 === */
+.bgm-title-cell {
+  display:flex; align-items:center; gap:10px;
+}
+.bgm-thumb {
+  width:44px; height:44px;
+  object-fit:cover;
+  border-radius:4px;
+  background:#000;
+  flex-shrink:0;
+  display:block;
+}
+.bgm-title-text { flex:1; min-width:0; }
+
 /* === Responsive === */
 @media (max-width:768px) {
   /* 헤더: 한 줄 유지, 제목 작게, 양옆 컴팩트 */
@@ -490,6 +504,10 @@ td a:hover { text-decoration:underline; }
   .src-thumb { width:44px; height:44px; }
   #srcThumbPopup { display:none !important; }
   .src-title-cell { gap:6px; }
+
+  /* BGM 썸네일 모바일 */
+  .bgm-thumb { width:36px; height:36px; }
+  .bgm-title-cell { gap:6px; }
 }
 
 @media (max-width:480px) {
@@ -966,13 +984,23 @@ function renderBgmTable() {
   nodata.style.display = 'none';
 
   tbody.innerHTML = data.map(b => {
+    const ytId = extractYouTubeId(b.url);
+    const thumbHtml = ytId
+      ? `<img class="bgm-thumb" src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" 
+          onerror="this.style.display='none'" alt="">`
+      : '';
     const linkBtn = b.url
       ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="text-decoration:none;font-size:18px;">▶️</a>`
       : '';
     const favIcon = b.fav ? '⭐' : '☆';
     return `
     <tr>
-      <td>${esc(b.title)}</td>
+      <td>
+        <div class="bgm-title-cell">
+          ${thumbHtml}
+          <div class="bgm-title-text">${esc(b.title)}</div>
+        </div>
+      </td>
       <td>${esc(b.mood||'-')}</td>
       <td>${esc(b.memo||'-')}</td>
       <td>${linkBtn}</td>
