@@ -140,6 +140,12 @@ textarea.input-field { resize:vertical; min-height:60px; }
 .btn-secondary { background:var(--bg-input); color:var(--text-secondary); border:1px solid var(--border); }
 .btn-secondary:hover { border-color:var(--text-muted); color:var(--text-primary); }
 .btn-sm { padding:6px 12px; font-size:12px; }
+.btn-reset {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.btn-reset:hover { background: rgba(255,68,102,.12); }
 
 /* === CONTENT TYPE DROPDOWN === */
 .ct-dropdown-wrap { position:relative; flex:1; }
@@ -582,6 +588,7 @@ td a:hover { text-decoration:underline; }
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV('channel')">📥 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ch-csv-input').click()">📤 가져오기</button>
       <input type="file" id="ch-csv-input" accept=".csv" style="display:none" onchange="importCSV('channel',this)">
+      <button class="btn btn-sm btn-reset" onclick="resetTab('channel')">🧹 초기화</button>
       <span class="item-count" id="ch-count"></span>
     </div>
     <div class="table-wrap">
@@ -642,6 +649,7 @@ td a:hover { text-decoration:underline; }
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV('source')">📥 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('src-csv-input').click()">📤 가져오기</button>
       <input type="file" id="src-csv-input" accept=".csv" style="display:none" onchange="importCSV('source',this)">
+      <button class="btn btn-sm btn-reset" onclick="resetTab('source')">🧹 초기화</button>
       <span class="item-count" id="src-count"></span>
     </div>
     <div class="table-wrap">
@@ -700,6 +708,7 @@ td a:hover { text-decoration:underline; }
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV('bgm')">📥 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bgm-csv-input').click()">📤 가져오기</button>
       <input type="file" id="bgm-csv-input" accept=".csv" style="display:none" onchange="importCSV('bgm',this)">
+      <button class="btn btn-sm btn-reset" onclick="resetTab('bgm')">🧹 초기화</button>
       <span class="item-count" id="bgm-count"></span>
     </div>
     <div class="table-wrap">
@@ -1873,6 +1882,34 @@ function updateFilterOptions() {
   });
 }
 
+// ===== 탭별 초기화 (비상용) =====
+function resetTab(tab) {
+  let list, key, label, doClear;
+  if (tab === 'channel') {
+    list = channels; key = 'dontong_channels'; label = '채널';
+    doClear = () => { channels = []; renderChannelTable(); updateFilterOptions(); };
+  } else if (tab === 'bgm') {
+    list = bgms; key = 'dontong_bgms'; label = 'BGM';
+    doClear = () => { bgms = []; renderBgmTable(); updateBgmFilterOptions(); };
+  } else {
+    list = sources; key = 'dontong_sources'; label = '소재';
+    doClear = () => { sources = []; renderSourceTable(); updateFilterOptions(); };
+  }
+
+  const cnt = list.length;
+  if (cnt === 0) { toast(`${label} 데이터가 이미 비어있습니다`); return; }
+
+  // 1차 확인 (백업 환기)
+  if (!confirm(`⚠️ ${label} 데이터 ${cnt}개가 영구 삭제됩니다.\n\n먼저 [📥 내보내기]로 백업하셨나요?\n삭제 후에는 되돌릴 수 없습니다.`)) return;
+
+  // 2차 확인
+  if (!confirm(`정말 ${label} ${cnt}개를 모두 삭제할까요?\n이번에 [확인]을 누르면 즉시 삭제됩니다.`)) return;
+
+  doClear();
+  localStorage.setItem(key, JSON.stringify([]));
+  toast(`🧹 ${label} ${cnt}개 초기화 완료`, 'success');
+}
+
 // ===== CSV DOWNLOAD =====
 function downloadCSV(tab) {
   let csv = '';
@@ -2143,9 +2180,17 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. API 사용량이 10,000을 넘으면?</div>
           <div>A. 유튜브 API 무료 할당량이 소진되면 "불러오기"가 안 될 수 있어요. 매일 오전 9시(한국시간)에 자동 초기화되니 다음날 다시 쓰시거나 다른걸로 갈아 끼우시면 됩니다.</div>
         </div>
-        <div>
+        <div style="margin-bottom:12px;">
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 한글 채널 주소가 깨져 보이는데?</div>
           <div>A. <span style="color:var(--blue);">https://www.youtube.com/@%ED%95%AB%ED%95%98%EA%B5%B0</span> 이런 식으로 길게 나와도 그대로 붙여넣으면 됩니다. 자동으로 변환됩니다!</div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 내보낸 CSV 파일이 글자가 깨져 보여요 (□□□)</div>
+          <div>A. CSV는 <b style="color:var(--text-primary);">엑셀이나 구글시트로 열어주세요.</b> 워드패드·메모장으로 열면 글자가 깨져 보일 수 있어요. ⚠️ 특히 <b style="color:var(--danger);">워드패드·메모장으로 열어서 "저장"을 누르면 파일이 진짜로 손상</b>되니 절대 그러지 마세요! 백업 CSV는 그대로 두고, 다시 쓸 땐 📤 가져오기로 불러오면 됩니다.</div>
+        </div>
+        <div>
+          <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 데이터가 꼬였어요. 초기화하고 싶어요</div>
+          <div>A. 각 탭 툴바의 <b style="color:var(--danger);">🧹 초기화</b> 버튼을 누르면 그 탭 데이터만 비울 수 있어요. (채널·소재·BGM 각각 따로!) 누르기 전에 꼭 <b style="color:var(--text-primary);">📥 내보내기로 백업</b>부터 하세요. 삭제하면 되돌릴 수 없습니다.</div>
         </div>
       </div>
     </div>
