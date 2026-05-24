@@ -561,6 +561,8 @@ td a:hover { text-decoration:underline; }
   <div class="tab active" data-tab="channel" onclick="switchTab('channel')">📺 채널 벤치마킹</div>
   <div class="tab" data-tab="source" onclick="switchTab('source')">🎬 소재 스크랩</div>
   <div class="tab" data-tab="bgm" onclick="switchTab('bgm')">🎵 BGM 모음</div>
+  <div class="tab" data-tab="tchannel" onclick="switchTab('tchannel')">📱 틱톡/인스타 채널</div>
+  <div class="tab" data-tab="tsource" onclick="switchTab('tsource')">📲 틱톡/인스타 소재</div>
 </div>
 
 <!-- MAIN -->
@@ -741,6 +743,122 @@ td a:hover { text-decoration:underline; }
       </div>
     </div>
   </div>
+
+  <!-- 틱톡/인스타 채널 TAB -->
+  <div id="tab-tchannel" class="tab-content" style="display:none;">
+    <div class="input-section">
+      <div class="input-row">
+        <div class="ct-dropdown-wrap">
+          <button class="ct-dropdown-trigger" id="tch-pf-trigger" onclick="togglePlatformDropdown('tch')">
+            <span id="tch-pf-label">플랫폼 선택</span>
+            <span>▾</span>
+          </button>
+          <div class="ct-dropdown-panel" id="tch-pf-panel"></div>
+        </div>
+        <input class="input-field" id="tch-name" placeholder="채널명">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tch-url" placeholder="채널 링크">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tch-reason" placeholder="벤치마킹 이유">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tch-style" placeholder="스타일/특징">
+        <button class="btn btn-primary" onclick="saveTChannel()" style="margin-left:auto;">저장</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search-box" id="tch-search" placeholder="🔍 검색..." oninput="renderTChannelTable()">
+      <select class="filter-select" id="tch-filter" onchange="renderTChannelTable()">
+        <option value="">전체 플랫폼</option>
+        <option value="틱톡">틱톡</option>
+        <option value="인스타">인스타</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tchannel')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tch-csv-input').click()">📤 가져오기</button>
+      <input type="file" id="tch-csv-input" accept=".csv" style="display:none" onchange="importCSV('tchannel',this)">
+      <button class="btn btn-sm btn-reset" onclick="resetTab('tchannel')">🧹 초기화</button>
+      <span class="item-count" id="tch-count"></span>
+    </div>
+    <div class="table-wrap">
+      <div class="table-container">
+        <table id="tch-table">
+          <thead>
+            <tr>
+              <th onclick="sortTChannel('platform')">플랫폼 <span class="sort-arrow" id="tch-sort-platform"></span></th>
+              <th onclick="sortTChannel('name')">채널명 <span class="sort-arrow" id="tch-sort-name"></span></th>
+              <th>링크</th>
+              <th>벤치마킹 이유</th>
+              <th>스타일/특징</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody id="tch-tbody"></tbody>
+        </table>
+        <div class="no-data" id="tch-nodata">저장된 채널이 없습니다</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 틱톡/인스타 소재 TAB -->
+  <div id="tab-tsource" class="tab-content" style="display:none;">
+    <div class="input-section">
+      <div class="input-row">
+        <div class="ct-dropdown-wrap">
+          <button class="ct-dropdown-trigger" id="tsr-pf-trigger" onclick="togglePlatformDropdown('tsr')">
+            <span id="tsr-pf-label">플랫폼 선택</span>
+            <span>▾</span>
+          </button>
+          <div class="ct-dropdown-panel" id="tsr-pf-panel"></div>
+        </div>
+        <input class="input-field" id="tsr-title" placeholder="제목/내용 요약">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tsr-url" placeholder="링크">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tsr-reason" placeholder="스크랩 이유">
+      </div>
+      <div class="input-row">
+        <input class="input-field" id="tsr-style" placeholder="스타일/유형">
+        <button class="btn btn-primary" onclick="saveTSource()" style="margin-left:auto;">저장</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input class="search-box" id="tsr-search" placeholder="🔍 검색..." oninput="renderTSourceTable()">
+      <select class="filter-select" id="tsr-filter" onchange="renderTSourceTable()">
+        <option value="">전체 플랫폼</option>
+        <option value="틱톡">틱톡</option>
+        <option value="인스타">인스타</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tsource')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tsr-csv-input').click()">📤 가져오기</button>
+      <input type="file" id="tsr-csv-input" accept=".csv" style="display:none" onchange="importCSV('tsource',this)">
+      <button class="btn btn-sm btn-reset" onclick="resetTab('tsource')">🧹 초기화</button>
+      <span class="item-count" id="tsr-count"></span>
+    </div>
+    <div class="table-wrap">
+      <div class="table-container">
+        <table id="tsr-table">
+          <thead>
+            <tr>
+              <th onclick="sortTSource('platform')">플랫폼 <span class="sort-arrow" id="tsr-sort-platform"></span></th>
+              <th onclick="sortTSource('title')">제목/내용 <span class="sort-arrow" id="tsr-sort-title"></span></th>
+              <th>링크</th>
+              <th>스크랩 이유</th>
+              <th>스타일/유형</th>
+              <th>액션</th>
+            </tr>
+          </thead>
+          <tbody id="tsr-tbody"></tbody>
+        </table>
+        <div class="no-data" id="tsr-nodata">저장된 소재가 없습니다</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- API KEY MODAL -->
@@ -753,7 +871,7 @@ td a:hover { text-decoration:underline; }
     <div class="usage-section">
       <div class="usage-header">
         <span>📊 가상 사용량</span>
-        <span class="usage-reset">AUTO-RESET 매일 09:00 KST</span>
+        <span class="usage-reset">AUTO-RESET 매일 태평양시 자정 (KST 17시경)</span>
       </div>
       <div class="usage-bar-bg">
         <div class="usage-bar-fill" id="usageBarFill" style="width:0%"></div>
@@ -867,6 +985,8 @@ let sources = JSON.parse(localStorage.getItem('dontong_sources') || '[]');
 let customTypes = JSON.parse(localStorage.getItem('dontong_ctypes') || '[]');
 let favTypes = JSON.parse(localStorage.getItem('dontong_favtypes') || '[]');
 let bgms = JSON.parse(localStorage.getItem('dontong_bgms') || '[]');
+let tchannels = JSON.parse(localStorage.getItem('dontong_tchannels') || '[]');
+let tsources = JSON.parse(localStorage.getItem('dontong_tsources') || '[]');
 let customMoods = JSON.parse(localStorage.getItem('dontong_bgm_moods') || '[]');
 let favMoods = JSON.parse(localStorage.getItem('dontong_bgm_favmoods') || '[]');
 let bgmSelectedMood = '';
@@ -876,6 +996,11 @@ let chSort = { key: null, asc: true };
 let srcSort = { key: null, asc: true };
 let chSelectedType = '';
 let srcSelectedType = '';
+let tchSort = { key: null, asc: true };
+let tsrSort = { key: null, asc: true };
+let tchSelectedPlatform = '';
+let tsrSelectedPlatform = '';
+const PLATFORMS = ['틱톡','인스타'];
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -887,6 +1012,10 @@ document.addEventListener('DOMContentLoaded', () => {
   renderBgmTable();
   updateFilterOptions();
   updateBgmFilterOptions();
+  renderTChannelTable();
+  renderTSourceTable();
+  buildPlatformDropdown('tch');
+  buildPlatformDropdown('tsr');
 });
 
 
@@ -910,6 +1039,8 @@ function switchTab(tab) {
   document.getElementById('tab-channel').style.display = tab === 'channel' ? '' : 'none';
   document.getElementById('tab-source').style.display = tab === 'source' ? '' : 'none';
   document.getElementById('tab-bgm').style.display = tab === 'bgm' ? '' : 'none';
+  document.getElementById('tab-tchannel').style.display = tab === 'tchannel' ? '' : 'none';
+  document.getElementById('tab-tsource').style.display = tab === 'tsource' ? '' : 'none';
 }
 
 // ===== BGM =====
@@ -1470,6 +1601,233 @@ function fmtDate(iso) {
   return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
 }
 
+// ===== 틱톡/인스타: 플랫폼 드롭다운 =====
+// prefix: 'tch' (채널) | 'tsr' (소재)
+function togglePlatformDropdown(prefix) {
+  const panel = document.getElementById(prefix + '-pf-panel');
+  const wasOpen = panel.classList.contains('open');
+  document.querySelectorAll('.ct-dropdown-panel').forEach(p => p.classList.remove('open'));
+  if (!wasOpen) { buildPlatformDropdown(prefix); panel.classList.add('open'); }
+}
+function buildPlatformDropdown(prefix) {
+  const panel = document.getElementById(prefix + '-pf-panel');
+  const cur = prefix === 'tch' ? tchSelectedPlatform : tsrSelectedPlatform;
+  panel.innerHTML = PLATFORMS.map(p => {
+    const sel = p === cur ? ' selected' : '';
+    return `<div class="ct-option${sel}" onclick="selectPlatform('${prefix}','${p}')"><span>${p}</span></div>`;
+  }).join('');
+}
+function selectPlatform(prefix, platform) {
+  if (prefix === 'tch') tchSelectedPlatform = platform;
+  else tsrSelectedPlatform = platform;
+  document.getElementById(prefix + '-pf-label').textContent = platform;
+  document.querySelectorAll('.ct-dropdown-panel').forEach(p => p.classList.remove('open'));
+}
+
+// ===== 틱톡/인스타 채널: 저장 =====
+function saveTChannel() {
+  const name = document.getElementById('tch-name').value.trim();
+  const url = document.getElementById('tch-url').value.trim();
+  if (!tchSelectedPlatform) { toast('플랫폼을 선택해주세요', 'error'); return; }
+  if (!name) { toast('채널명을 입력해주세요', 'error'); return; }
+  tchannels.push({
+    id: genId(),
+    platform: tchSelectedPlatform,
+    name, url,
+    reason: document.getElementById('tch-reason').value.trim(),
+    style: document.getElementById('tch-style').value.trim(),
+    fav: false,
+    date: new Date().toISOString()
+  });
+  localStorage.setItem('dontong_tchannels', JSON.stringify(tchannels));
+  renderTChannelTable();
+  // 입력 초기화
+  document.getElementById('tch-name').value = '';
+  document.getElementById('tch-url').value = '';
+  document.getElementById('tch-reason').value = '';
+  document.getElementById('tch-style').value = '';
+  tchSelectedPlatform = '';
+  document.getElementById('tch-pf-label').textContent = '플랫폼 선택';
+  toast('✅ 채널 저장됨', 'success');
+}
+
+// ===== 틱톡/인스타 소재: 저장 =====
+function saveTSource() {
+  const title = document.getElementById('tsr-title').value.trim();
+  const url = document.getElementById('tsr-url').value.trim();
+  if (!tsrSelectedPlatform) { toast('플랫폼을 선택해주세요', 'error'); return; }
+  if (!title) { toast('제목/내용을 입력해주세요', 'error'); return; }
+  tsources.push({
+    id: genId(),
+    platform: tsrSelectedPlatform,
+    title, url,
+    reason: document.getElementById('tsr-reason').value.trim(),
+    style: document.getElementById('tsr-style').value.trim(),
+    fav: false,
+    date: new Date().toISOString()
+  });
+  localStorage.setItem('dontong_tsources', JSON.stringify(tsources));
+  renderTSourceTable();
+  document.getElementById('tsr-title').value = '';
+  document.getElementById('tsr-url').value = '';
+  document.getElementById('tsr-reason').value = '';
+  document.getElementById('tsr-style').value = '';
+  tsrSelectedPlatform = '';
+  document.getElementById('tsr-pf-label').textContent = '플랫폼 선택';
+  toast('✅ 소재 저장됨', 'success');
+}
+
+// ===== 틱톡/인스타 채널: 렌더 =====
+function renderTChannelTable() {
+  const tbody = document.getElementById('tch-tbody');
+  const nodata = document.getElementById('tch-nodata');
+  const q = document.getElementById('tch-search').value.trim().toLowerCase();
+  const pf = document.getElementById('tch-filter').value;
+  let data = tchannels.slice();
+  if (pf) data = data.filter(c => c.platform === pf);
+  if (q) data = data.filter(c =>
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.reason||'').toLowerCase().includes(q) ||
+    (c.style||'').toLowerCase().includes(q));
+  if (tchSort.key) {
+    data.sort((a,b) => {
+      let va = (a[tchSort.key]||'').toString().toLowerCase();
+      let vb = (b[tchSort.key]||'').toString().toLowerCase();
+      return tchSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+  data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
+  document.getElementById('tch-count').textContent = `${data.length}개`;
+  if (!data.length) { tbody.innerHTML = ''; nodata.style.display = 'block'; return; }
+  nodata.style.display = 'none';
+  tbody.innerHTML = data.map(c => `
+    <tr>
+      <td>${esc(c.platform)}</td>
+      <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">${esc(c.name)}</a>` : esc(c.name)}</td>
+      <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">🔗</a>` : '-'}</td>
+      <td>${esc(c.reason||'-')}</td>
+      <td>${esc(c.style||'-')}</td>
+      <td class="cell-actions">
+        <button class="fav-btn${c.fav?' fav-on':''}" onclick="toggleFavItem('tchannel',${c.id})" title="즐겨찾기">${c.fav?'⭐':'☆'}</button>
+        <button onclick="editTItem('tchannel',${c.id})" title="수정">✏️</button>
+        <button onclick="deleteItem('tchannel',${c.id})" title="삭제">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ===== 틱톡/인스타 소재: 렌더 =====
+function renderTSourceTable() {
+  const tbody = document.getElementById('tsr-tbody');
+  const nodata = document.getElementById('tsr-nodata');
+  const q = document.getElementById('tsr-search').value.trim().toLowerCase();
+  const pf = document.getElementById('tsr-filter').value;
+  let data = tsources.slice();
+  if (pf) data = data.filter(s => s.platform === pf);
+  if (q) data = data.filter(s =>
+    (s.title||'').toLowerCase().includes(q) ||
+    (s.reason||'').toLowerCase().includes(q) ||
+    (s.style||'').toLowerCase().includes(q));
+  if (tsrSort.key) {
+    data.sort((a,b) => {
+      let va = (a[tsrSort.key]||'').toString().toLowerCase();
+      let vb = (b[tsrSort.key]||'').toString().toLowerCase();
+      return tsrSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
+  }
+  data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
+  document.getElementById('tsr-count').textContent = `${data.length}개`;
+  if (!data.length) { tbody.innerHTML = ''; nodata.style.display = 'block'; return; }
+  nodata.style.display = 'none';
+  tbody.innerHTML = data.map(s => `
+    <tr>
+      <td>${esc(s.platform)}</td>
+      <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">${esc(s.title)}</a>` : esc(s.title)}</td>
+      <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">🔗</a>` : '-'}</td>
+      <td>${esc(s.reason||'-')}</td>
+      <td>${esc(s.style||'-')}</td>
+      <td class="cell-actions">
+        <button class="fav-btn${s.fav?' fav-on':''}" onclick="toggleFavItem('tsource',${s.id})" title="즐겨찾기">${s.fav?'⭐':'☆'}</button>
+        <button onclick="editTItem('tsource',${s.id})" title="수정">✏️</button>
+        <button onclick="deleteItem('tsource',${s.id})" title="삭제">🗑</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ===== 틱톡/인스타: 정렬 =====
+function sortTChannel(key) {
+  if (tchSort.key === key) tchSort.asc = !tchSort.asc;
+  else { tchSort.key = key; tchSort.asc = true; }
+  document.querySelectorAll('#tch-table .sort-arrow').forEach(s => s.textContent = '');
+  document.getElementById('tch-sort-' + key).textContent = tchSort.asc ? '▲' : '▼';
+  renderTChannelTable();
+}
+function sortTSource(key) {
+  if (tsrSort.key === key) tsrSort.asc = !tsrSort.asc;
+  else { tsrSort.key = key; tsrSort.asc = true; }
+  document.querySelectorAll('#tsr-table .sort-arrow').forEach(s => s.textContent = '');
+  document.getElementById('tsr-sort-' + key).textContent = tsrSort.asc ? '▲' : '▼';
+  renderTSourceTable();
+}
+
+// ===== 틱톡/인스타: 수정 (모달) =====
+function editTItem(tab, id) {
+  const list = tab === 'tchannel' ? tchannels : tsources;
+  const item = list.find(x => x.id === id);
+  if (!item) return;
+
+  const pfOptions = PLATFORMS.map(p =>
+    `<option value="${p}"${item.platform===p?' selected':''}>${p}</option>`).join('');
+
+  document.getElementById('editModalTitle').textContent =
+    tab === 'tchannel' ? '틱톡/인스타 채널 수정' : '틱톡/인스타 소재 수정';
+  const body = document.getElementById('editModalBody');
+
+  if (tab === 'tchannel') {
+    body.innerHTML = `
+      <select class="input-field" id="edit-tpf">${pfOptions}</select>
+      <input class="input-field" id="edit-tname" value="${esc(item.name||'')}" placeholder="채널명">
+      <input class="input-field" id="edit-turl" value="${esc(item.url||'')}" placeholder="링크">
+      <input class="input-field" id="edit-treason" value="${esc(item.reason||'')}" placeholder="벤치마킹 이유">
+      <input class="input-field" id="edit-tstyle" value="${esc(item.style||'')}" placeholder="스타일/특징">
+    `;
+    document.getElementById('editModalSave').onclick = () => {
+      const name = document.getElementById('edit-tname').value.trim();
+      if (!name) { toast('채널명을 입력해주세요', 'error'); return; }
+      item.platform = document.getElementById('edit-tpf').value;
+      item.name = name;
+      item.url = document.getElementById('edit-turl').value.trim();
+      item.reason = document.getElementById('edit-treason').value.trim();
+      item.style = document.getElementById('edit-tstyle').value.trim();
+      localStorage.setItem('dontong_tchannels', JSON.stringify(tchannels));
+      renderTChannelTable(); closeEditModal();
+      toast('수정 완료', 'success');
+    };
+  } else {
+    body.innerHTML = `
+      <select class="input-field" id="edit-tpf">${pfOptions}</select>
+      <input class="input-field" id="edit-ttitle" value="${esc(item.title||'')}" placeholder="제목/내용 요약">
+      <input class="input-field" id="edit-turl" value="${esc(item.url||'')}" placeholder="링크">
+      <input class="input-field" id="edit-treason" value="${esc(item.reason||'')}" placeholder="스크랩 이유">
+      <input class="input-field" id="edit-tstyle" value="${esc(item.style||'')}" placeholder="스타일/유형">
+    `;
+    document.getElementById('editModalSave').onclick = () => {
+      const title = document.getElementById('edit-ttitle').value.trim();
+      if (!title) { toast('제목/내용을 입력해주세요', 'error'); return; }
+      item.platform = document.getElementById('edit-tpf').value;
+      item.title = title;
+      item.url = document.getElementById('edit-turl').value.trim();
+      item.reason = document.getElementById('edit-treason').value.trim();
+      item.style = document.getElementById('edit-tstyle').value.trim();
+      localStorage.setItem('dontong_tsources', JSON.stringify(tsources));
+      renderTSourceTable(); closeEditModal();
+      toast('수정 완료', 'success');
+    };
+  }
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+
 // ===== RENDER CHANNEL TABLE =====
 function renderChannelTable() {
   const search = document.getElementById('ch-search').value.toLowerCase();
@@ -1679,6 +2037,18 @@ function deleteItem(tab, id) {
     localStorage.setItem('dontong_bgms', JSON.stringify(bgms));
     renderBgmTable();
     updateBgmFilterOptions();
+  } else if (tab === 'tchannel') {
+    tchannels = tchannels.filter(c => c.id !== id);
+    localStorage.setItem('dontong_tchannels', JSON.stringify(tchannels));
+    renderTChannelTable();
+    toast('삭제 완료');
+    return;
+  } else if (tab === 'tsource') {
+    tsources = tsources.filter(s => s.id !== id);
+    localStorage.setItem('dontong_tsources', JSON.stringify(tsources));
+    renderTSourceTable();
+    toast('삭제 완료');
+    return;
   } else {
     sources = sources.filter(s => s.id !== id);
     localStorage.setItem('dontong_sources', JSON.stringify(sources));
@@ -1692,6 +2062,8 @@ function toggleFavItem(tab, id) {
   let list, key;
   if (tab === 'channel') { list = channels; key = 'dontong_channels'; }
   else if (tab === 'bgm') { list = bgms; key = 'dontong_bgms'; }
+  else if (tab === 'tchannel') { list = tchannels; key = 'dontong_tchannels'; }
+  else if (tab === 'tsource') { list = tsources; key = 'dontong_tsources'; }
   else { list = sources; key = 'dontong_sources'; }
   const item = list.find(x => x.id === id);
   if (item) {
@@ -1699,6 +2071,8 @@ function toggleFavItem(tab, id) {
     localStorage.setItem(key, JSON.stringify(list));
     if (tab === 'channel') renderChannelTable();
     else if (tab === 'bgm') renderBgmTable();
+    else if (tab === 'tchannel') renderTChannelTable();
+    else if (tab === 'tsource') renderTSourceTable();
     else renderSourceTable();
     toast(item.fav ? '⭐ 즐겨찾기 추가' : '즐겨찾기 해제');
   }
@@ -1930,6 +2304,12 @@ function resetTab(tab) {
   } else if (tab === 'bgm') {
     list = bgms; key = 'dontong_bgms'; label = 'BGM';
     doClear = () => { bgms = []; renderBgmTable(); updateBgmFilterOptions(); };
+  } else if (tab === 'tchannel') {
+    list = tchannels; key = 'dontong_tchannels'; label = '틱톡/인스타 채널';
+    doClear = () => { tchannels = []; renderTChannelTable(); };
+  } else if (tab === 'tsource') {
+    list = tsources; key = 'dontong_tsources'; label = '틱톡/인스타 소재';
+    doClear = () => { tsources = []; renderTSourceTable(); };
   } else {
     list = sources; key = 'dontong_sources'; label = '소재';
     doClear = () => { sources = []; renderSourceTable(); updateFilterOptions(); };
@@ -1965,10 +2345,22 @@ function downloadCSV(tab) {
       csv += [b.title,b.mood,b.memo,b.url]
         .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
     });
-  } else {
+  } else if (tab === 'source') {
     csv = '제목,채널,업로드일,조회수,유형,스크랩이유,내용,결,링크\n';
     sources.forEach(s => {
       csv += [s.title,s.channel,fmtDate(s.uploadDate),s.views,s.type,s.reason,s.content,s.style,s.url]
+        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+    });
+  } else if (tab === 'tchannel') {
+    csv = '플랫폼,채널명,링크,벤치마킹이유,스타일특징\n';
+    tchannels.forEach(c => {
+      csv += [c.platform,c.name,c.url,c.reason,c.style]
+        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+    });
+  } else if (tab === 'tsource') {
+    csv = '플랫폼,제목내용,링크,스크랩이유,스타일유형\n';
+    tsources.forEach(s => {
+      csv += [s.platform,s.title,s.url,s.reason,s.style]
         .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
     });
   }
@@ -1979,6 +2371,8 @@ function downloadCSV(tab) {
   let label = '소재';
   if (tab === 'channel') label = '채널';
   else if (tab === 'bgm') label = 'BGM';
+  else if (tab === 'tchannel') label = '틱톡인스타채널';
+  else if (tab === 'tsource') label = '틱톡인스타소재';
   a.download = `에셋_${label}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
@@ -2048,7 +2442,7 @@ function importCSV(tab, inputEl) {
       localStorage.setItem('dontong_bgm_moods', JSON.stringify(customMoods));
       renderBgmTable();
       updateBgmFilterOptions();
-    } else {
+    } else if (tab === 'source') {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
         if (r.length < 9) continue;
@@ -2068,8 +2462,43 @@ function importCSV(tab, inputEl) {
       }
       localStorage.setItem('dontong_sources', JSON.stringify(sources));
       renderSourceTable();
+      updateFilterOptions();
+    } else if (tab === 'tchannel') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.length < 5) continue;
+        const [platform,name,url,reason,style] = r;
+        if (tchannels.some(c => c.name === name && c.platform === platform)) { skipped++; continue; }
+        tchannels.push({
+          id: genId(),
+          platform: platform || '틱톡',
+          name, url, reason, style,
+          fav: false,
+          date: new Date().toISOString()
+        });
+        added++;
+      }
+      localStorage.setItem('dontong_tchannels', JSON.stringify(tchannels));
+      renderTChannelTable();
+    } else if (tab === 'tsource') {
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.length < 5) continue;
+        const [platform,title,url,reason,style] = r;
+        if (tsources.some(s => s.title === title && s.platform === platform)) { skipped++; continue; }
+        tsources.push({
+          id: genId(),
+          platform: platform || '틱톡',
+          title, url, reason, style,
+          fav: false,
+          date: new Date().toISOString()
+        });
+        added++;
+      }
+      localStorage.setItem('dontong_tsources', JSON.stringify(tsources));
+      renderTSourceTable();
     }
-    if (tab !== 'bgm') updateFilterOptions();
+    if (tab === 'channel' || tab === 'source') updateFilterOptions();
     toast(`✅ ${added}개 추가, ${skipped}개 중복 건너뜀`, 'success');
   };
   reader.readAsText(file, 'UTF-8');
