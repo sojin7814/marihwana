@@ -258,6 +258,18 @@ td a:hover { text-decoration:underline; }
   font-size:16px; padding:4px; opacity:.5; transition:opacity .15s;
 }
 .cell-actions button:hover { opacity:1; }
+/* 즐겨찾기 버튼 - 시인성 강화 */
+.cell-actions button.fav-btn {
+  font-size:18px; opacity:1; line-height:1;
+  border:1.5px solid var(--border); border-radius:6px;
+  padding:3px 7px; color:var(--text-secondary);
+}
+.cell-actions button.fav-btn:hover {
+  border-color:var(--star-color); color:var(--star-color);
+}
+.cell-actions button.fav-btn.fav-on {
+  border-color:var(--star-color); color:var(--star-color);
+}
 .no-data {
   text-align:center; padding:40px 20px;
   color:var(--text-muted); font-size:14px;
@@ -980,6 +992,8 @@ function renderBgmTable() {
       return bgmSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }
+  // 즐겨찾기는 정렬과 무관하게 항상 맨 위로 고정
+  data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
 
   const tbody = document.getElementById('bgm-tbody');
   const nodata = document.getElementById('bgm-nodata');
@@ -1017,7 +1031,7 @@ function renderBgmTable() {
       <td>${esc(b.memo||'-')}</td>
       <td>${linkBtn}</td>
       <td class="cell-actions">
-        <button onclick="toggleFavItem('bgm',${b.id})" title="즐겨찾기">${favIcon}</button>
+        <button class="fav-btn${b.fav?' fav-on':''}" onclick="toggleFavItem('bgm',${b.id})" title="즐겨찾기">${favIcon}</button>
         <button onclick="editItem('bgm',${b.id})" title="수정">✏️</button>
         <button onclick="deleteItem('bgm',${b.id})" title="삭제">🗑️</button>
       </td>
@@ -1467,6 +1481,8 @@ function renderChannelTable() {
       return chSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }
+  // 즐겨찾기는 정렬과 무관하게 항상 맨 위로 고정
+  data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
 
   const tbody = document.getElementById('ch-tbody');
   const nodata = document.getElementById('ch-nodata');
@@ -1493,7 +1509,7 @@ function renderChannelTable() {
       <td>${esc(c.ref||'-')}</td>
       <td>${esc(c.style||'-')}</td>
       <td class="cell-actions">
-        <button onclick="toggleFavItem('channel',${c.id})" title="즐겨찾기">⭐</button>
+        <button class="fav-btn${c.fav?' fav-on':''}" onclick="toggleFavItem('channel',${c.id})" title="즐겨찾기">${c.fav?'⭐':'☆'}</button>
         <button onclick="editItem('channel',${c.id})" title="수정">✏️</button>
         <button onclick="deleteItem('channel',${c.id})" title="삭제">🗑️</button>
       </td>
@@ -1528,6 +1544,8 @@ function renderSourceTable() {
       return srcSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }
+  // 즐겨찾기는 정렬과 무관하게 항상 맨 위로 고정
+  data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
 
   const tbody = document.getElementById('src-tbody');
   const nodata = document.getElementById('src-nodata');
@@ -1570,7 +1588,7 @@ function renderSourceTable() {
       <td>${esc(s.content||'-')}</td>
       <td>${esc(s.style||'-')}</td>
       <td class="cell-actions">
-        <button onclick="toggleFavItem('source',${s.id})" title="즐겨찾기">⭐</button>
+        <button class="fav-btn${s.fav?' fav-on':''}" onclick="toggleFavItem('source',${s.id})" title="즐겨찾기">${s.fav?'⭐':'☆'}</button>
         <button onclick="editItem('source',${s.id})" title="수정">✏️</button>
         <button onclick="deleteItem('source',${s.id})" title="삭제">🗑️</button>
       </td>
@@ -1661,6 +1679,9 @@ function toggleFavItem(tab, id) {
   if (item) {
     item.fav = !item.fav;
     localStorage.setItem(key, JSON.stringify(list));
+    if (tab === 'channel') renderChannelTable();
+    else if (tab === 'bgm') renderBgmTable();
+    else renderSourceTable();
     toast(item.fav ? '⭐ 즐겨찾기 추가' : '즐겨찾기 해제');
   }
 }
@@ -1960,10 +1981,18 @@ function importCSV(tab, inputEl) {
     let added = 0, skipped = 0;
 
     if (tab === 'channel') {
+      // 신버전 헤더(10칸, 평균조회수 포함) / 구버전(9칸) 모두 호환
+      const hasAvg = header.length >= 10;
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
-        if (r.length < 9) continue;
-        const [name,subs,videos,views,type,reason,ref,style,url] = r;
+        if (r.length < (hasAvg ? 10 : 9)) continue;
+        let name,subs,videos,views,type,reason,ref,style,url;
+        if (hasAvg) {
+          // 평균조회수 칸은 영상수/조회수로 재계산하므로 받아서 버림
+          [name,subs,videos,views,,type,reason,ref,style,url] = r;
+        } else {
+          [name,subs,videos,views,type,reason,ref,style,url] = r;
+        }
         // 중복 체크: 같은 채널명이면 건너뛰기
         if (channels.some(c => c.name === name)) { skipped++; continue; }
         channels.push({
@@ -1971,6 +2000,7 @@ function importCSV(tab, inputEl) {
           channelId: '', name, url,
           subs: parseInt(subs)||0, videos: parseInt(videos)||0, views: parseInt(views)||0,
           type, reason, ref, style,
+          fav: false,
           date: new Date().toISOString()
         });
         added++;
@@ -2013,6 +2043,7 @@ function importCSV(tab, inputEl) {
           uploadDate: uploadDate || '',
           views: parseInt(views)||0,
           type, reason, content, style,
+          fav: false,
           date: new Date().toISOString()
         });
         added++;
@@ -2185,8 +2216,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
           <div>A. <span style="color:var(--blue);">https://www.youtube.com/@%ED%95%AB%ED%95%98%EA%B5%B0</span> 이런 식으로 길게 나와도 그대로 붙여넣으면 됩니다. 자동으로 변환됩니다!</div>
         </div>
         <div style="margin-bottom:12px;">
-          <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 내보낸 CSV 파일이 글자가 깨져 보여요 (□□□)</div>
-          <div>A. CSV는 <b style="color:var(--text-primary);">엑셀이나 구글시트로 열어주세요.</b> 워드패드·메모장으로 열면 글자가 깨져 보일 수 있어요. ⚠️ 특히 <b style="color:var(--danger);">워드패드·메모장으로 열어서 "저장"을 누르면 파일이 진짜로 손상</b>되니 절대 그러지 마세요! 백업 CSV는 그대로 두고, 다시 쓸 땐 📤 가져오기로 불러오면 됩니다.</div>
+          <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. CSV 파일을 열었더니 글자가 깨져 보여요 (□□□)</div>
+          <div>A. CSV는 <b style="color:var(--text-primary);">눈으로 보는 파일이 아니라 데이터를 옮기는 파일</b>이라 굳이 열어볼 필요가 없어요. 받은 파일은 그냥 📤 가져오기로 넣으면 되고, 내용을 보고 싶으면 가져오기 한 다음 표에서 확인하세요.<br>⚠️ 메모장·워드패드로 CSV를 열어서 <b style="color:var(--danger);">"저장"을 누르면 파일이 손상</b>될 수 있어요. 특히 내가 📥 내보내기로 만든 <b style="color:var(--danger);">백업 파일은 손상되면 되살릴 수 없으니</b> 열지 마세요. (꼭 열어봐야 한다면 엑셀이나 구글시트로!)</div>
         </div>
         <div>
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 데이터가 꼬였어요. 초기화하고 싶어요</div>
