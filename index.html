@@ -859,7 +859,7 @@ const YT_CATEGORIES = [
   '교육','과학/기술','비영리/사회','먹방/요리','ASMR','재테크/경제'
 ];
 const USAGE_LIMIT = 10000;
-const USAGE_RESET_HOUR = 0; // UTC 0 = KST 9
+const USAGE_RESET_HOUR = 8; // UTC 8 = 태평양시(PST) 자정, 유튜브 API 할당량 리셋 기준
 
 // ===== STATE =====
 let channels = JSON.parse(localStorage.getItem('dontong_channels') || '[]');
@@ -929,7 +929,7 @@ async function fetchBgm() {
   try {
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${key}`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error('API 오류: ' + res.status);
+    if (!res.ok) throw new Error(await apiErrorMessage(res));
     const data = await res.json();
     addUsage(1);
 
@@ -950,7 +950,7 @@ function saveBgm() {
   if (!title) { toast('곡명을 입력하세요', 'error'); return; }
 
   const item = {
-    id: Date.now(),
+    id: genId(),
     title, url, memo,
     mood: bgmSelectedMood || '',
     fav: false,
@@ -1177,6 +1177,25 @@ function updateBgmFilterOptions() {
 
 // ===== API KEY =====
 function getApiKey() { return localStorage.getItem('dontong_apikey') || ''; }
+// API 응답이 실패일 때 사용자가 이해할 메시지로 변환
+async function apiErrorMessage(res) {
+  let reason = '';
+  try {
+    const j = await res.json();
+    reason = (j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
+  } catch(e) {}
+  if (res.status === 403) {
+    if (reason === 'quotaExceeded' || reason === 'dailyLimitExceeded') {
+      return '오늘 API 할당량(하루 1만)을 모두 사용했어요. 내일 자정(태평양시)에 초기화돼요. 채널은 /channel/UC... 형식 주소로 넣으면 적게 소모됩니다.';
+    }
+    if (reason === 'keyInvalid' || reason === 'badRequest') {
+      return 'API 키가 올바르지 않아요. 설정에서 키를 다시 확인해주세요.';
+    }
+    return 'API 접근이 거부됐어요(403). 키 설정 또는 할당량을 확인해주세요.';
+  }
+  if (res.status === 400) return 'API 키 형식이 잘못된 것 같아요. 설정에서 다시 확인해주세요.';
+  return 'API 오류: ' + res.status;
+}
 function updateApiDot() {
   document.getElementById('apiDot').classList.toggle('active', !!getApiKey());
 }
@@ -1225,14 +1244,13 @@ function addUsage(units) {
 function checkUsageReset() {
   const lastReset = localStorage.getItem('dontong_usage_reset');
   const now = new Date();
-  const utcHour = now.getUTCHours();
-  const todayResetUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), USAGE_RESET_HOUR));
-  if (now >= todayResetUTC) {
-    const resetKey = todayResetUTC.toISOString().slice(0,10);
-    if (lastReset !== resetKey) {
-      localStorage.setItem('dontong_usage', '0');
-      localStorage.setItem('dontong_usage_reset', resetKey);
-    }
+  // 가장 최근에 지나간 리셋 시각을 구함 (오늘 리셋시각 전이면 어제 것)
+  let boundary = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), USAGE_RESET_HOUR));
+  if (now < boundary) boundary = new Date(boundary.getTime() - 24*60*60*1000);
+  const resetKey = boundary.toISOString().slice(0,13); // 날짜+시(UTC)까지 구분
+  if (lastReset !== resetKey) {
+    localStorage.setItem('dontong_usage', '0');
+    localStorage.setItem('dontong_usage_reset', resetKey);
   }
 }
 function updateUsageUI() {
@@ -1292,7 +1310,7 @@ async function fetchChannel() {
       const handle = ident.value.replace('@','');
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(handle)}&type=channel&maxResults=1&key=${key}`;
       const res = await fetch(searchUrl);
-      if (!res.ok) throw new Error('API 오류: ' + res.status);
+      if (!res.ok) throw new Error(await apiErrorMessage(res));
       const data = await res.json();
       addUsage(100); // search costs ~100 units
       if (!data.items || !data.items.length) { toast('채널을 찾을 수 없습니다', 'error'); return; }
@@ -1302,7 +1320,7 @@ async function fetchChannel() {
     // Get channel details
     const detailUrl = `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}&key=${key}`;
     const res2 = await fetch(detailUrl);
-    if (!res2.ok) throw new Error('API 오류: ' + res2.status);
+    if (!res2.ok) throw new Error(await apiErrorMessage(res2));
     const data2 = await res2.json();
     addUsage(3); // channels.list ≈ 3 units
 
@@ -1329,7 +1347,7 @@ function saveChannel() {
   if (!name) { toast('먼저 채널을 불러와주세요', 'error'); return; }
 
   const item = {
-    id: Date.now(),
+    id: genId(),
     channelId: urlEl.dataset.channelId,
     name: name,
     url: urlEl.value.trim(),
@@ -1379,7 +1397,7 @@ async function fetchSource() {
   try {
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${key}`;
     const res = await fetch(url);
-    if (!res.ok) throw new Error('API 오류: ' + res.status);
+    if (!res.ok) throw new Error(await apiErrorMessage(res));
     const data = await res.json();
     addUsage(2);
 
@@ -1406,7 +1424,7 @@ function saveSource() {
   if (!title) { toast('먼저 영상을 불러와주세요', 'error'); return; }
 
   const item = {
-    id: Date.now(),
+    id: genId(),
     videoId: urlEl.dataset.videoId,
     title: title,
     url: urlEl.value.trim(),
@@ -1996,7 +2014,7 @@ function importCSV(tab, inputEl) {
         // 중복 체크: 같은 채널명이면 건너뛰기
         if (channels.some(c => c.name === name)) { skipped++; continue; }
         channels.push({
-          id: Date.now() + i,
+          id: genId(),
           channelId: '', name, url,
           subs: parseInt(subs)||0, videos: parseInt(videos)||0, views: parseInt(views)||0,
           type, reason, ref, style,
@@ -2019,7 +2037,7 @@ function importCSV(tab, inputEl) {
           customMoods.push(mood);
         }
         bgms.push({
-          id: Date.now() + i,
+          id: genId(),
           title, mood, memo, url,
           fav: false,
           date: new Date().toISOString()
@@ -2038,7 +2056,7 @@ function importCSV(tab, inputEl) {
         // 중복 체크: 같은 제목+채널이면 건너뛰기
         if (sources.some(s => s.title === title && s.channel === channel)) { skipped++; continue; }
         sources.push({
-          id: Date.now() + i,
+          id: genId(),
           videoId: '', title, url, channel,
           uploadDate: uploadDate || '',
           views: parseInt(views)||0,
@@ -2079,6 +2097,13 @@ function parseCSVRows(text) {
   }
   if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
   return rows;
+}
+
+// ===== 고유 ID 생성 (밀리초 충돌 방지) =====
+let _idCounter = 0;
+function genId() {
+  _idCounter = (_idCounter + 1) % 1000;
+  return Date.now() * 1000 + _idCounter;
 }
 
 // ===== ESCAPE HTML =====
