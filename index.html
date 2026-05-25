@@ -2365,31 +2365,31 @@ function downloadCSV(tab) {
     channels.forEach(c => {
       const avg = c.videos > 0 ? Math.round(c.views / c.videos) : 0;
       csv += [c.name,c.subs,c.videos,c.views,avg,c.type,c.reason,c.ref,c.style,c.url]
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+        .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'bgm') {
     csv = '곡명,분위기,메모,링크\n';
     bgms.forEach(b => {
       csv += [b.title,b.mood,b.memo,b.url]
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+        .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'source') {
     csv = '제목,채널,업로드일,조회수,유형,스크랩이유,내용,결,링크\n';
     sources.forEach(s => {
       csv += [s.title,s.channel,fmtDate(s.uploadDate),s.views,s.type,s.reason,s.content,s.style,s.url]
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+        .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'tchannel') {
     csv = '플랫폼,채널명,링크,벤치마킹이유,스타일특징\n';
     tchannels.forEach(c => {
       csv += [c.platform,c.name,c.url,c.reason,c.style]
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+        .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'tsource') {
     csv = '플랫폼,제목내용,링크,스크랩이유,스타일유형\n';
     tsources.forEach(s => {
       csv += [s.platform,s.title,s.url,s.reason,s.style]
-        .map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',') + '\n';
+        .map(csvCell).join(',') + '\n';
     });
   }
   const bom = '\uFEFF';
@@ -2424,6 +2424,22 @@ function importCSV(tab, inputEl) {
     const header = rows[0];
     let added = 0, skipped = 0;
 
+    // === CSV 형식이 현재 탭과 맞는지 검사 (탭 잘못 선택 방지) ===
+    const headerStr = header.join(',');
+    const REQUIRED = {
+      channel:  ['채널명','구독자','영상수','조회수'],
+      source:   ['제목','채널','업로드일','조회수'],
+      bgm:      ['곡명','분위기','메모','링크'],
+      tchannel: ['플랫폼','채널명','링크'],
+      tsource:  ['플랫폼','제목내용','링크']
+    };
+    const need = REQUIRED[tab] || [];
+    const ok = need.every(k => headerStr.includes(k));
+    if (!ok) {
+      toast('현재 탭과 CSV 형식이 맞지 않습니다. 올바른 탭에서 가져와주세요.', 'error');
+      return;
+    }
+
     if (tab === 'channel') {
       // 신버전 헤더(10칸, 평균조회수 포함) / 구버전(9칸) 모두 호환
       const hasAvg = header.length >= 10;
@@ -2457,8 +2473,9 @@ function importCSV(tab, inputEl) {
         const r = rows[i];
         if (r.length < 4) continue;
         const [title,mood,memo,url] = r;
-        // 중복 체크: 같은 곡명이면 건너뛰기
-        if (bgms.some(b => b.title === title)) { skipped++; continue; }
+        // 중복 체크: 링크 있으면 링크 기준, 없으면 곡명+분위기(공백/대소문자 무시)
+        const isDup = bgms.some(b => bgmDedupMatch(b, {title, mood, url}));
+        if (isDup) { skipped++; continue; }
         // 새 분위기면 customMoods에 추가
         if (mood && !DEFAULT_MOODS.includes(mood) && !customMoods.includes(mood)) {
           customMoods.push(mood);
@@ -2609,6 +2626,30 @@ function esc(str) {
   return str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ===== CSV 셀 안전 처리 =====
+// 따옴표 이스케이프 + 엑셀 수식 인젝션 방지(=,+,-,@로 시작하면 앞에 ' 붙임)
+function csvCell(v) {
+  v = (v || '').toString();
+  if (/^[=+\-@]/.test(v)) v = "'" + v;
+  return `"${v.replace(/"/g, '""')}"`;
+}
+
+// ===== BGM 중복 판정 =====
+// 링크가 양쪽 다 있으면 링크(유튜브 ID 우선) 기준, 아니면 곡명+분위기(공백/대소문자 무시)
+function bgmDedupMatch(a, b) {
+  const aUrl = (a.url || '').trim();
+  const bUrl = (b.url || '').trim();
+  if (aUrl && bUrl) {
+    const aId = extractYouTubeId(aUrl);
+    const bId = extractYouTubeId(bUrl);
+    if (aId && bId) return aId === bId;            // 같은 유튜브 영상이면 중복
+    return aUrl.toLowerCase() === bUrl.toLowerCase(); // 그 외엔 링크 문자열 비교
+  }
+  // 링크가 없으면 곡명+분위기로 비교 (앞뒤 공백 제거 + 소문자)
+  const norm = s => (s || '').trim().toLowerCase();
+  return norm(a.title) === norm(b.title) && norm(a.mood) === norm(b.mood);
+}
+
 // ===== Close modals on overlay click =====
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => {
@@ -2641,7 +2682,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         <div style="margin-bottom:8px;">③ <b style="color:var(--text-primary);">✅ 저장</b> 버튼을 누르면 끝!</div>
         <div>　 → 저장 후 버튼 옆 <b style="color:var(--green);">●</b> 초록불이 켜지면 정상입니다.</div>
       </div>
-      <div style="font-size:12px;color:var(--text-muted);">💡 API 키는 내 브라우저에만 저장됩니다. 다른 사람에게 전송되지 않으니 안심하세요.</div>
+      <div style="font-size:12px;color:var(--text-muted);">💡 API 키는 내 브라우저에만 저장되며, 제작자나 다른 사용자에게 전송되지 않습니다. 단, 채널 정보를 불러올 때 Google(YouTube) 서버에는 사용됩니다. 공용 PC에서는 사용 후 🗑 삭제를 권장합니다.</div>
     </div>
 
     <!-- STEP 1 -->
