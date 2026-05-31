@@ -270,6 +270,27 @@ td a:hover { text-decoration:underline; }
 .cell-actions button.fav-btn.fav-on {
   border-color:var(--star-color); color:var(--star-color);
 }
+/* ===== 선택 내보내기 모드 ===== */
+.sel-col { display:none; width:36px; text-align:center; }
+table.selmode .sel-col { display:table-cell; }
+.sel-col input[type="checkbox"] {
+  width:18px; height:18px; cursor:pointer; accent-color:var(--accent);
+  vertical-align:middle;
+}
+.select-bar {
+  display:none; flex-wrap:wrap; align-items:center; gap:8px;
+  margin:0 0 12px; padding:9px 12px;
+  background:var(--accent-glow);
+  border:1px solid var(--accent); border-radius:8px;
+}
+.select-bar.open { display:flex; }
+.select-bar .sel-count {
+  font-size:13px; font-weight:700; color:var(--text-primary);
+  margin-right:4px;
+}
+.select-bar .sel-export-btn:disabled {
+  opacity:.45; cursor:not-allowed;
+}
 .no-data {
   text-align:center; padding:40px 20px;
   color:var(--text-muted); font-size:14px;
@@ -599,17 +620,26 @@ td a:hover { text-decoration:underline; }
       <select class="filter-select" id="ch-filter" onchange="renderChannelTable()">
         <option value="">전체 유형</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('channel')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('channel')">📥 전체 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('channel')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ch-csv-input').click()">📤 가져오기</button>
       <input type="file" id="ch-csv-input" accept=".csv" style="display:none" onchange="importCSV('channel',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('channel')">🧹 초기화</button>
       <span class="item-count" id="ch-count"></span>
+    </div>
+    <div class="select-bar" id="ch-selbar">
+      <span class="sel-count">선택 0 / 전체 0개</span>
+      <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('channel')">전체 선택</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('channel')">전체 해제</button>
+      <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('channel',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('channel')">✖ 취소</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
         <table id="ch-table">
           <thead>
             <tr>
+              <th class="sel-col"></th>
               <th onclick="sortChannel('name')">채널명 <span class="sort-arrow" id="ch-sort-name"></span></th>
               <th onclick="sortChannel('subs')">구독자 <span class="sort-arrow" id="ch-sort-subs"></span></th>
               <th onclick="sortChannel('videos')">영상수 <span class="sort-arrow" id="ch-sort-videos"></span></th>
@@ -660,17 +690,26 @@ td a:hover { text-decoration:underline; }
       <select class="filter-select" id="src-filter" onchange="renderSourceTable()">
         <option value="">전체 유형</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('source')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('source')">📥 전체 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('source')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('src-csv-input').click()">📤 가져오기</button>
       <input type="file" id="src-csv-input" accept=".csv" style="display:none" onchange="importCSV('source',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('source')">🧹 초기화</button>
       <span class="item-count" id="src-count"></span>
+    </div>
+    <div class="select-bar" id="src-selbar">
+      <span class="sel-count">선택 0 / 전체 0개</span>
+      <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('source')">전체 선택</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('source')">전체 해제</button>
+      <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('source',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('source')">✖ 취소</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
         <table id="src-table">
           <thead>
             <tr>
+              <th class="sel-col"></th>
               <th onclick="sortSource('title')">제목 <span class="sort-arrow" id="src-sort-title"></span></th>
               <th onclick="sortSource('channel')">채널 <span class="sort-arrow" id="src-sort-channel"></span></th>
               <th onclick="sortSource('date')">업로드 <span class="sort-arrow" id="src-sort-date"></span></th>
@@ -719,17 +758,26 @@ td a:hover { text-decoration:underline; }
       <select class="filter-select" id="bgm-filter" onchange="renderBgmTable()">
         <option value="">전체 분위기</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('bgm')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('bgm')">📥 전체 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('bgm')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bgm-csv-input').click()">📤 가져오기</button>
       <input type="file" id="bgm-csv-input" accept=".csv" style="display:none" onchange="importCSV('bgm',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('bgm')">🧹 초기화</button>
       <span class="item-count" id="bgm-count"></span>
+    </div>
+    <div class="select-bar" id="bgm-selbar">
+      <span class="sel-count">선택 0 / 전체 0개</span>
+      <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('bgm')">전체 선택</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('bgm')">전체 해제</button>
+      <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('bgm',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('bgm')">✖ 취소</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
         <table id="bgm-table">
           <thead>
             <tr>
+              <th class="sel-col"></th>
               <th onclick="sortBgm('title')">곡명 <span class="sort-arrow" id="bgm-sort-title"></span></th>
               <th onclick="sortBgm('mood')">분위기 <span class="sort-arrow" id="bgm-sort-mood"></span></th>
               <th>메모</th>
@@ -776,17 +824,26 @@ td a:hover { text-decoration:underline; }
         <option value="틱톡">틱톡</option>
         <option value="인스타">인스타</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tchannel')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tchannel')">📥 전체 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('tchannel')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tch-csv-input').click()">📤 가져오기</button>
       <input type="file" id="tch-csv-input" accept=".csv" style="display:none" onchange="importCSV('tchannel',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('tchannel')">🧹 초기화</button>
       <span class="item-count" id="tch-count"></span>
+    </div>
+    <div class="select-bar" id="tch-selbar">
+      <span class="sel-count">선택 0 / 전체 0개</span>
+      <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tchannel')">전체 선택</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tchannel')">전체 해제</button>
+      <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tchannel',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tchannel')">✖ 취소</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
         <table id="tch-table">
           <thead>
             <tr>
+              <th class="sel-col"></th>
               <th onclick="sortTChannel('platform')">플랫폼 <span class="sort-arrow" id="tch-sort-platform"></span></th>
               <th onclick="sortTChannel('name')">채널명 <span class="sort-arrow" id="tch-sort-name"></span></th>
               <th>링크</th>
@@ -834,17 +891,26 @@ td a:hover { text-decoration:underline; }
         <option value="틱톡">틱톡</option>
         <option value="인스타">인스타</option>
       </select>
-      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tsource')">📥 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV('tsource')">📥 전체 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('tsource')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('tsr-csv-input').click()">📤 가져오기</button>
       <input type="file" id="tsr-csv-input" accept=".csv" style="display:none" onchange="importCSV('tsource',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('tsource')">🧹 초기화</button>
       <span class="item-count" id="tsr-count"></span>
+    </div>
+    <div class="select-bar" id="tsr-selbar">
+      <span class="sel-count">선택 0 / 전체 0개</span>
+      <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tsource')">전체 선택</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tsource')">전체 해제</button>
+      <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tsource',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tsource')">✖ 취소</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
         <table id="tsr-table">
           <thead>
             <tr>
+              <th class="sel-col"></th>
               <th onclick="sortTSource('platform')">플랫폼 <span class="sort-arrow" id="tsr-sort-platform"></span></th>
               <th onclick="sortTSource('title')">제목/내용 <span class="sort-arrow" id="tsr-sort-title"></span></th>
               <th>링크</th>
@@ -987,6 +1053,9 @@ let favTypes = JSON.parse(localStorage.getItem('dontong_favtypes') || '[]');
 let bgms = JSON.parse(localStorage.getItem('dontong_bgms') || '[]');
 let tchannels = JSON.parse(localStorage.getItem('dontong_tchannels') || '[]');
 let tsources = JSON.parse(localStorage.getItem('dontong_tsources') || '[]');
+// ===== 선택 내보내기 상태 (저장 안 함, 새로고침 시 초기화) =====
+const selectMode = { channel:false, source:false, bgm:false, tchannel:false, tsource:false };
+const selectedIds = { channel:new Set(), source:new Set(), bgm:new Set(), tchannel:new Set(), tsource:new Set() };
 let customMoods = JSON.parse(localStorage.getItem('dontong_bgm_moods') || '[]');
 let favMoods = JSON.parse(localStorage.getItem('dontong_bgm_favmoods') || '[]');
 let bgmSelectedMood = '';
@@ -1103,6 +1172,7 @@ function saveBgm() {
 }
 
 function renderBgmTable() {
+  if (selectMode.bgm) updateSelectBar('bgm');
   const search = document.getElementById('bgm-search').value.toLowerCase();
   const filter = document.getElementById('bgm-filter').value;
   let data = bgms.filter(b => {
@@ -1152,6 +1222,7 @@ function renderBgmTable() {
     const favIcon = b.fav ? '⭐' : '☆';
     return `
     <tr>
+      ${selCell('bgm',b.id)}
       <td>
         <div class="bgm-title-cell">
           ${thumbHtml}
@@ -1705,6 +1776,7 @@ function saveTSource() {
 
 // ===== 틱톡/인스타 채널: 렌더 =====
 function renderTChannelTable() {
+  if (selectMode.tchannel) updateSelectBar('tchannel');
   const tbody = document.getElementById('tch-tbody');
   const nodata = document.getElementById('tch-nodata');
   const q = document.getElementById('tch-search').value.trim().toLowerCase();
@@ -1728,6 +1800,7 @@ function renderTChannelTable() {
   nodata.style.display = 'none';
   tbody.innerHTML = data.map(c => `
     <tr>
+      ${selCell('tchannel',c.id)}
       <td>${esc(c.platform)}</td>
       <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">${esc(c.name)}</a>` : esc(c.name)}</td>
       <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">🔗</a>` : '-'}</td>
@@ -1743,6 +1816,7 @@ function renderTChannelTable() {
 
 // ===== 틱톡/인스타 소재: 렌더 =====
 function renderTSourceTable() {
+  if (selectMode.tsource) updateSelectBar('tsource');
   const tbody = document.getElementById('tsr-tbody');
   const nodata = document.getElementById('tsr-nodata');
   const q = document.getElementById('tsr-search').value.trim().toLowerCase();
@@ -1766,6 +1840,7 @@ function renderTSourceTable() {
   nodata.style.display = 'none';
   tbody.innerHTML = data.map(s => `
     <tr>
+      ${selCell('tsource',s.id)}
       <td>${esc(s.platform)}</td>
       <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">${esc(s.title)}</a>` : esc(s.title)}</td>
       <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">🔗</a>` : '-'}</td>
@@ -1856,6 +1931,7 @@ function editTItem(tab, id) {
 
 // ===== RENDER CHANNEL TABLE =====
 function renderChannelTable() {
+  if (selectMode.channel) updateSelectBar('channel');
   const search = document.getElementById('ch-search').value.toLowerCase();
   const filter = document.getElementById('ch-filter').value;
   let data = channels.filter(c => {
@@ -1901,6 +1977,7 @@ function renderChannelTable() {
     const avgViews = c.videos > 0 ? Math.round(c.views / c.videos) : 0;
     return `
     <tr>
+      ${selCell('channel',c.id)}
       <td><a href="https://www.youtube.com/channel/${c.channelId}" target="_blank">${esc(c.name)}</a></td>
       <td>${fmtNum(c.subs)}</td>
       <td>${fmtNum(c.videos)}</td>
@@ -1921,6 +1998,7 @@ function renderChannelTable() {
 
 // ===== RENDER SOURCE TABLE =====
 function renderSourceTable() {
+  if (selectMode.source) updateSelectBar('source');
   const search = document.getElementById('src-search').value.toLowerCase();
   const filter = document.getElementById('src-filter').value;
   let data = sources.filter(s => {
@@ -1974,6 +2052,7 @@ function renderSourceTable() {
     const linkUrl = vid ? `https://www.youtube.com/shorts/${vid}` : (s.url || '#');
     return `
     <tr>
+      ${selCell('source',s.id)}
       <td>
         <div class="src-title-cell">
           ${thumbHtml}
@@ -2345,7 +2424,7 @@ function resetTab(tab) {
   if (cnt === 0) { toast(`${label} 데이터가 이미 비어있습니다`); return; }
 
   // 1차 확인 (백업 환기)
-  if (!confirm(`⚠️ ${label} 데이터 ${cnt}개가 영구 삭제됩니다.\n\n먼저 [📥 내보내기]로 백업하셨나요?\n삭제 후에는 되돌릴 수 없습니다.`)) return;
+  if (!confirm(`⚠️ ${label} 데이터 ${cnt}개가 영구 삭제됩니다.\n\n먼저 [📥 전체 내보내기]로 백업하셨나요?\n삭제 후에는 되돌릴 수 없습니다.`)) return;
 
   // 2차 확인
   if (!confirm(`정말 ${label} ${cnt}개를 모두 삭제할까요?\n이번에 [확인]을 누르면 즉시 삭제됩니다.`)) return;
@@ -2355,39 +2434,120 @@ function resetTab(tab) {
   toast(`🧹 ${label} ${cnt}개 초기화 완료`, 'success');
 }
 
+// ===== 선택 내보내기 모드 =====
+function selCell(tab, id) {
+  const checked = selectedIds[tab].has(id) ? ' checked' : '';
+  return `<td class="sel-col"><input type="checkbox"${checked} onclick="event.stopPropagation()" onchange="toggleSelect('${tab}',${id},this.checked)"></td>`;
+}
+function selTabArray(tab) {
+  return { channel:channels, source:sources, bgm:bgms, tchannel:tchannels, tsource:tsources }[tab];
+}
+function selTableId(tab) {
+  return { channel:'ch-table', source:'src-table', bgm:'bgm-table', tchannel:'tch-table', tsource:'tsr-table' }[tab];
+}
+function selBarId(tab) {
+  return { channel:'ch-selbar', source:'src-selbar', bgm:'bgm-selbar', tchannel:'tch-selbar', tsource:'tsr-selbar' }[tab];
+}
+function selRender(tab) {
+  ({ channel:renderChannelTable, source:renderSourceTable, bgm:renderBgmTable,
+     tchannel:renderTChannelTable, tsource:renderTSourceTable })[tab]();
+}
+function toggleSelectMode(tab) {
+  selectMode[tab] = !selectMode[tab];
+  const table = document.getElementById(selTableId(tab));
+  const bar = document.getElementById(selBarId(tab));
+  if (selectMode[tab]) {
+    table.classList.add('selmode');
+    bar.classList.add('open');
+  } else {
+    table.classList.remove('selmode');
+    bar.classList.remove('open');
+    selectedIds[tab].clear(); // 모드 종료 시 선택 초기화
+  }
+  selRender(tab);
+  updateSelectBar(tab);
+}
+function toggleSelect(tab, id, checked) {
+  if (checked) selectedIds[tab].add(id);
+  else selectedIds[tab].delete(id);
+  updateSelectBar(tab);
+}
+function selectAllInTab(tab) {
+  selTabArray(tab).forEach(x => selectedIds[tab].add(x.id));
+  selRender(tab);
+  updateSelectBar(tab);
+}
+function clearAllInTab(tab) {
+  selectedIds[tab].clear();
+  selRender(tab);
+  updateSelectBar(tab);
+}
+function updateSelectBar(tab) {
+  const bar = document.getElementById(selBarId(tab));
+  if (!bar) return;
+  const arr = selTabArray(tab);
+  const sel = selectedIds[tab];
+  const n = arr.filter(x => sel.has(x.id)).length; // 실제 존재하는 선택 항목만
+  const countEl = bar.querySelector('.sel-count');
+  const btn = bar.querySelector('.sel-export-btn');
+  if (countEl) countEl.textContent = `선택 ${n} / 전체 ${arr.length}개`;
+  if (btn) {
+    btn.textContent = `📥 선택 ${n}개 내보내기`;
+    btn.disabled = (n === 0);
+  }
+}
+
 // ===== CSV DOWNLOAD =====
-function downloadCSV(tab) {
+function downloadCSV(tab, selectedOnly) {
   const exporter = askExporterName();
   if (exporter === null) return; // 사용자가 취소하면 내보내기 중단
+
+  // 내보낼 대상 추리기 (선택 내보내기면 체크된 것만)
+  let chList = channels, srcList = sources, bgmList = bgms, tchList = tchannels, tsrList = tsources;
+  if (selectedOnly) {
+    const sel = selectedIds[tab];
+    const base = selTabArray(tab);
+    const picked = base.filter(x => sel.has(x.id));
+    if (!picked.length) {
+      alert('선택된 항목이 없습니다.\n내보낼 항목을 체크해 주세요.');
+      return;
+    }
+    chList = (tab === 'channel') ? picked : [];
+    srcList = (tab === 'source') ? picked : [];
+    bgmList = (tab === 'bgm') ? picked : [];
+    tchList = (tab === 'tchannel') ? picked : [];
+    tsrList = (tab === 'tsource') ? picked : [];
+  }
+
   let csv = '';
   if (tab === 'channel') {
     csv = '채널명,구독자,영상수,조회수,평균조회수,유형,스크랩이유,레퍼런스,결,링크\n';
-    channels.forEach(c => {
+    chList.forEach(c => {
       const avg = c.videos > 0 ? Math.round(c.views / c.videos) : 0;
       csv += [c.name,c.subs,c.videos,c.views,avg,c.type,c.reason,c.ref,c.style,c.url]
         .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'bgm') {
     csv = '곡명,분위기,메모,링크\n';
-    bgms.forEach(b => {
+    bgmList.forEach(b => {
       csv += [b.title,b.mood,b.memo,b.url]
         .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'source') {
     csv = '제목,채널,업로드일,조회수,유형,스크랩이유,내용,결,링크\n';
-    sources.forEach(s => {
+    srcList.forEach(s => {
       csv += [s.title,s.channel,fmtDate(s.uploadDate),s.views,s.type,s.reason,s.content,s.style,s.url]
         .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'tchannel') {
     csv = '플랫폼,채널명,링크,벤치마킹이유,스타일특징\n';
-    tchannels.forEach(c => {
+    tchList.forEach(c => {
       csv += [c.platform,c.name,c.url,c.reason,c.style]
         .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'tsource') {
     csv = '플랫폼,제목내용,링크,스크랩이유,스타일유형\n';
-    tsources.forEach(s => {
+    tsrList.forEach(s => {
       csv += [s.platform,s.title,s.url,s.reason,s.style]
         .map(csvCell).join(',') + '\n';
     });
@@ -2741,7 +2901,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">🔍 검색</b> — 표 위 검색창에 키워드를 입력하면 채널명, 스크랩이유, 유형 등에서 즉시 필터링됩니다.</div>
         <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📁 유형 필터</b> — 검색창 옆 드롭다운에서 특정 유형만 골라볼 수 있습니다.</div>
         <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">↕️ 정렬</b> — 표 헤더(채널명, 구독자, 조회수 등)를 클릭하면 오름차순/내림차순으로 정렬됩니다.</div>
-        <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📥 내보내기</b> — 현재 데이터를 엑셀에서 열 수 있는 CSV 파일로 다운로드합니다.</div>
+        <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📥 전체 내보내기</b> — 현재 탭에 모은 데이터를 통째로 CSV 파일로 다운로드합니다.</div>
+        <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">✅ 선택 내보내기</b> — 원하는 항목만 골라서 내보낼 수 있어요. 누르면 각 줄 앞에 체크박스가 생기고, 체크한 것만 CSV로 나갑니다. 위에 <b style="color:var(--text-primary);">선택 N / 전체 M개</b> 숫자가 떠서, "30개만 제출" 같은 과제에서 개수를 딱 맞추기 좋아요. (검색·정렬해도 체크한 항목은 그대로 유지됩니다.)</div>
         <div><b style="color:var(--text-primary);">📤 가져오기</b> — 다른 기기에서 내보낸 CSV 파일을 선택하면 데이터가 합쳐집니다. 같은 채널/영상은 자동으로 건너뛰어서 중복 걱정 없어요!</div>
       </div>
     </div>
@@ -2768,7 +2929,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         </div>
         <div style="margin-bottom:12px;">
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 다른 기기에서도 쓸 수 있나요?</div>
-          <div>A. 데이터는 기기별/브라우저별로 따로 저장됩니다. 하지만 📥 내보내기로 CSV를 다운받아 카톡이나 메일로 보낸 뒤, 다른 기기에서 📤 가져오기를 하면 데이터를 옮길 수 있어요!</div>
+          <div>A. 데이터는 기기별/브라우저별로 따로 저장됩니다. 하지만 📥 전체 내보내기로 CSV를 다운받아 카톡이나 메일로 보낸 뒤, 다른 기기에서 📤 가져오기를 하면 데이터를 옮길 수 있어요!</div>
         </div>
         <div style="margin-bottom:12px;">
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. API 사용량이 10,000을 넘으면?</div>
@@ -2780,11 +2941,11 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         </div>
         <div style="margin-bottom:12px;">
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. CSV 파일을 열었더니 글자가 깨져 보여요 (□□□)</div>
-          <div>A. CSV는 <b style="color:var(--text-primary);">눈으로 보는 파일이 아니라 데이터를 옮기는 파일</b>이라 굳이 열어볼 필요가 없어요. 받은 파일은 그냥 📤 가져오기로 넣으면 되고, 내용을 보고 싶으면 가져오기 한 다음 표에서 확인하세요.<br>⚠️ 메모장·워드패드로 CSV를 열어서 <b style="color:var(--danger);">"저장"을 누르면 파일이 손상</b>될 수 있어요. 특히 내가 📥 내보내기로 만든 <b style="color:var(--danger);">백업 파일은 손상되면 되살릴 수 없으니</b> 열지 마세요. (꼭 열어봐야 한다면 엑셀이나 구글시트로!)</div>
+          <div>A. CSV는 <b style="color:var(--text-primary);">눈으로 보는 파일이 아니라 데이터를 옮기는 파일</b>이라 굳이 열어볼 필요가 없어요. 받은 파일은 그냥 📤 가져오기로 넣으면 되고, 내용을 보고 싶으면 가져오기 한 다음 표에서 확인하세요.<br>⚠️ 메모장·워드패드로 CSV를 열어서 <b style="color:var(--danger);">"저장"을 누르면 파일이 손상</b>될 수 있어요. 특히 내가 📥 전체 내보내기로 만든 <b style="color:var(--danger);">백업 파일은 손상되면 되살릴 수 없으니</b> 열지 마세요. (꼭 열어봐야 한다면 엑셀이나 구글시트로!)</div>
         </div>
         <div>
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px;">Q. 데이터가 꼬였어요. 초기화하고 싶어요</div>
-          <div>A. 각 탭 툴바의 <b style="color:var(--danger);">🧹 초기화</b> 버튼을 누르면 그 탭 데이터만 비울 수 있어요. (채널·소재·BGM 각각 따로!) 누르기 전에 꼭 <b style="color:var(--text-primary);">📥 내보내기로 백업</b>부터 하세요. 삭제하면 되돌릴 수 없습니다.</div>
+          <div>A. 각 탭 툴바의 <b style="color:var(--danger);">🧹 초기화</b> 버튼을 누르면 그 탭 데이터만 비울 수 있어요. (채널·소재·BGM 각각 따로!) 누르기 전에 꼭 <b style="color:var(--text-primary);">📥 전체 내보내기로 백업</b>부터 하세요. 삭제하면 되돌릴 수 없습니다.</div>
         </div>
       </div>
     </div>
