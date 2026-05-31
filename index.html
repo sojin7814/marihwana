@@ -93,6 +93,40 @@ body {
 }
 .btn-api-key .dot.active { background:var(--green); box-shadow:0 0 6px var(--green); }
 
+/* === API 키 미등록 유도 (펄스 + 안내 배지) === */
+.header-right { position:relative; }
+/* 키 없을 때만 버튼 은은하게 펄스 */
+.btn-api-key.needs-key {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  animation: apiPulse 1.8s ease-in-out infinite;
+}
+@keyframes apiPulse {
+  0%,100% { box-shadow:0 0 0 0 var(--accent-glow); }
+  50%     { box-shadow:0 0 0 6px rgba(255,51,68,0); }
+}
+/* 키 없을 때 안내 배지 (버튼 아래 말풍선) */
+.api-key-badge {
+  position:absolute; top:calc(100% + 10px); right:0;
+  display:none; align-items:center; gap:4px;
+  padding:7px 12px; border-radius:8px;
+  background:var(--yellow); color:#1a1a22;
+  font-size:12px; font-weight:700; white-space:nowrap;
+  cursor:pointer; z-index:120;
+  box-shadow:0 4px 14px rgba(0,0,0,0.35);
+  animation: badgeFloat 2s ease-in-out infinite;
+}
+.api-key-badge.show { display:flex; }
+.api-key-badge::before {
+  content:""; position:absolute; top:-6px; right:18px;
+  width:12px; height:12px; background:var(--yellow);
+  transform:rotate(45deg);
+}
+@keyframes badgeFloat {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-3px); }
+}
+
 /* === TABS === */
 .tabs {
   display:flex; gap:0; padding:0 24px; background:var(--bg-secondary);
@@ -574,6 +608,7 @@ table.selmode .sel-col { display:table-cell; }
       <span class="dot" id="apiDot"></span>
       <span>🔑 API 키 설정</span>
     </button>
+    <div class="api-key-badge" id="apiKeyBadge" onclick="openApiModal()">↑ 먼저 API 키를 등록하세요</div>
   </div>
 </header>
 
@@ -1399,7 +1434,13 @@ async function apiErrorMessage(res) {
   return 'API 오류: ' + res.status;
 }
 function updateApiDot() {
-  document.getElementById('apiDot').classList.toggle('active', !!getApiKey());
+  const hasKey = !!getApiKey();
+  document.getElementById('apiDot').classList.toggle('active', hasKey);
+  // 키 미등록일 때만 버튼 펄스 + 안내 배지 표시 (저장되면 자동으로 사라짐)
+  const btn = document.querySelector('.btn-api-key');
+  if (btn) btn.classList.toggle('needs-key', !hasKey);
+  const badge = document.getElementById('apiKeyBadge');
+  if (badge) badge.classList.toggle('show', !hasKey);
 }
 function openApiModal() {
   document.getElementById('apiModal').classList.add('open');
