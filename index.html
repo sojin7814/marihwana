@@ -322,10 +322,16 @@ table.selmode .sel-col { display:table-cell; }
   font-size:13px; font-weight:700; color:var(--text-primary);
   margin-right:4px;
 }
+.select-bar .sel-export-btn {
+  background:var(--yellow); color:#1a1a22; border-color:var(--yellow);
+}
+.select-bar .sel-export-btn:hover { filter:brightness(1.08); }
 .select-bar .sel-export-btn:disabled {
   opacity:.45; cursor:not-allowed;
 }
 .select-bar .sel-delete-btn {
+  margin-left:auto;
+  background:transparent;
   border-color:var(--accent); color:var(--accent);
 }
 .select-bar .sel-delete-btn:hover { background:var(--accent); color:#fff; }
@@ -674,8 +680,8 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('channel')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('channel')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('channel',true)">📥 선택 0개 내보내기</button>
-      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('channel')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('channel')">✖ 취소</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('channel')">🗑 선택 0개 삭제</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
@@ -745,8 +751,8 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('source')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('source')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('source',true)">📥 선택 0개 내보내기</button>
-      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('source')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('source')">✖ 취소</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('source')">🗑 선택 0개 삭제</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
@@ -814,8 +820,8 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('bgm')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('bgm')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('bgm',true)">📥 선택 0개 내보내기</button>
-      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('bgm')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('bgm')">✖ 취소</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('bgm')">🗑 선택 0개 삭제</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
@@ -881,8 +887,8 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tchannel')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tchannel')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tchannel',true)">📥 선택 0개 내보내기</button>
-      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tchannel')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tchannel')">✖ 취소</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tchannel')">🗑 선택 0개 삭제</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
@@ -949,8 +955,8 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tsource')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tsource')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tsource',true)">📥 선택 0개 내보내기</button>
-      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tsource')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tsource')">✖ 취소</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tsource')">🗑 선택 0개 삭제</button>
     </div>
     <div class="table-wrap">
       <div class="table-container">
