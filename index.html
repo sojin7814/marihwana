@@ -325,6 +325,13 @@ table.selmode .sel-col { display:table-cell; }
 .select-bar .sel-export-btn:disabled {
   opacity:.45; cursor:not-allowed;
 }
+.select-bar .sel-delete-btn {
+  border-color:var(--accent); color:var(--accent);
+}
+.select-bar .sel-delete-btn:hover { background:var(--accent); color:#fff; }
+.select-bar .sel-delete-btn:disabled {
+  opacity:.45; cursor:not-allowed; background:transparent; color:var(--accent);
+}
 .no-data {
   text-align:center; padding:40px 20px;
   color:var(--text-muted); font-size:14px;
@@ -667,6 +674,7 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('channel')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('channel')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('channel',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('channel')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('channel')">✖ 취소</button>
     </div>
     <div class="table-wrap">
@@ -737,6 +745,7 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('source')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('source')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('source',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('source')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('source')">✖ 취소</button>
     </div>
     <div class="table-wrap">
@@ -805,6 +814,7 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('bgm')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('bgm')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('bgm',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('bgm')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('bgm')">✖ 취소</button>
     </div>
     <div class="table-wrap">
@@ -871,6 +881,7 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tchannel')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tchannel')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tchannel',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tchannel')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tchannel')">✖ 취소</button>
     </div>
     <div class="table-wrap">
@@ -938,6 +949,7 @@ table.selmode .sel-col { display:table-cell; }
       <button class="btn btn-secondary btn-sm" onclick="selectAllInTab('tsource')">전체 선택</button>
       <button class="btn btn-secondary btn-sm" onclick="clearAllInTab('tsource')">전체 해제</button>
       <button class="btn btn-primary btn-sm sel-export-btn" onclick="downloadCSV('tsource',true)">📥 선택 0개 내보내기</button>
+      <button class="btn btn-sm sel-delete-btn" onclick="deleteSelected('tsource')">🗑 선택 0개 삭제</button>
       <button class="btn btn-sm btn-reset" onclick="toggleSelectMode('tsource')">✖ 취소</button>
     </div>
     <div class="table-wrap">
@@ -2204,6 +2216,32 @@ function deleteItem(tab, id) {
   toast('삭제 완료');
 }
 
+function deleteSelected(tab) {
+  const sel = selectedIds[tab];
+  const arr = selTabArray(tab);
+  const n = arr.filter(x => sel.has(x.id)).length; // 실제 존재하는 선택분만
+  if (n === 0) return;
+  if (!confirm(`선택한 ${n}개를 삭제할까요?`)) return;
+
+  let key, render;
+  if (tab === 'channel') { channels = channels.filter(c => !sel.has(c.id)); key = 'dontong_channels'; render = renderChannelTable; }
+  else if (tab === 'bgm') { bgms = bgms.filter(b => !sel.has(b.id)); key = 'dontong_bgms'; render = renderBgmTable; }
+  else if (tab === 'tchannel') { tchannels = tchannels.filter(c => !sel.has(c.id)); key = 'dontong_tchannels'; render = renderTChannelTable; }
+  else if (tab === 'tsource') { tsources = tsources.filter(s => !sel.has(s.id)); key = 'dontong_tsources'; render = renderTSourceTable; }
+  else { sources = sources.filter(s => !sel.has(s.id)); key = 'dontong_sources'; render = renderSourceTable; }
+
+  // 새 배열로 교체됐으므로 selTabArray(tab)가 가리키는 참조도 갱신 위해 localStorage 저장 후 렌더
+  localStorage.setItem(key, JSON.stringify(
+    { channel:channels, bgm:bgms, tchannel:tchannels, tsource:tsources, source:sources }[tab]
+  ));
+  sel.clear();
+  render();
+  if (tab === 'bgm') updateBgmFilterOptions();
+  else updateFilterOptions();
+  updateSelectBar(tab);
+  toast(`🗑 ${n}개 삭제 완료`);
+}
+
 function toggleFavItem(tab, id) {
   let list, key;
   if (tab === 'channel') { list = channels; key = 'dontong_channels'; }
@@ -2535,6 +2573,11 @@ function updateSelectBar(tab) {
   if (btn) {
     btn.textContent = `📥 선택 ${n}개 내보내기`;
     btn.disabled = (n === 0);
+  }
+  const delBtn = bar.querySelector('.sel-delete-btn');
+  if (delBtn) {
+    delBtn.textContent = `🗑 선택 ${n}개 삭제`;
+    delBtn.disabled = (n === 0);
   }
 }
 
