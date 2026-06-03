@@ -284,7 +284,9 @@ function save() {
 }
 
 /* ===== 유틸 ===== */
-function esc(str){ if(str===0) return '0'; if(!str) return ''; return str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(str){ if(str===0) return '0'; if(!str) return ''; return str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+/* URL 안전화: http/https 절대주소만 통과, javascript: 등 위험 스킴은 '#' */
+function safeUrl(url){ url=(url||'').trim(); try{ const u=new URL(url); if(u.protocol==='http:'||u.protocol==='https:') return url; }catch(e){} return '#'; }
 function genId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
 function fmt(n){ return (parseInt(n)||0).toLocaleString('ko-KR'); }
 
@@ -303,13 +305,16 @@ function channelDedupKey(url, name){
   return 'name:'+(name||'').trim().toLowerCase();
 }
 
+/* 제출자 이름 정규화: 구분자(;)와 앞뒤 공백 제거 (CSV 왕복 시 한 명이 둘로 쪼개지는 것 방지) */
+function cleanSubmitter(s){ return (s||'').toString().replace(/;/g,' ').replace(/\s+/g,' ').trim(); }
+
 /* 파일명에서 제출자 추출: 에셋_채널_{이름}_YYYY-MM-DD.csv */
 function submitterFromFilename(fname){
   const base=fname.replace(/\.csv$/i,'');
   const m=base.match(/^에셋_채널_(.+)_\d{4}-\d{2}-\d{2}$/);
-  if(m) return m[1];
+  if(m) return cleanSubmitter(m[1]);
   // 형식이 다르면 파일명 그대로(확장자만 제거) — 스태프가 식별하도록
-  return base;
+  return cleanSubmitter(base);
 }
 
 /* CSV 파서 (돈통과 동일) */
@@ -378,7 +383,7 @@ function ingestOneFile(text, fname){
     if(!name && !url){ skipped++; continue; }
     // 제출자 결정
     let subs_list;
-    if(hasSubmitterCol && r[10]) subs_list = r[10].split(';').map(s=>s.trim()).filter(Boolean);
+    if(hasSubmitterCol && r[10]) subs_list = r[10].split(';').map(s=>cleanSubmitter(s)).filter(Boolean);
     else subs_list = [fileSubmitter];
 
     const key=channelDedupKey(url,name);
@@ -485,8 +490,8 @@ function renderTable(){
   const tb=document.getElementById('tbody');
   if(!list.length){ tb.innerHTML=`<tr><td colspan="${COLS.length}" style="text-align:center;color:var(--text-muted);padding:30px;">${channels.length?'검색 결과가 없습니다.':'CSV 파일을 가져오면 여기에 표시됩니다.'}</td></tr>`; return; }
   tb.innerHTML=list.map(c=>{
-    const link=c.url? `<a class="ch-link" href="${esc(c.url)}" target="_blank" rel="noopener">바로가기 ↗</a>` : '<span style="color:var(--text-muted)">-</span>';
-    const nameCell = c.url? `<a class="ch-link" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a>` : esc(c.name);
+    const link=c.url? `<a class="ch-link" href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">바로가기 ↗</a>` : '<span style="color:var(--text-muted)">-</span>';
+    const nameCell = c.url? `<a class="ch-link" href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>` : esc(c.name);
     const typeDisp = c.type? `${esc(c.type)}<span class="ed-ic">✏️</span>` : `<span class="type-empty">미분류 ✏️</span>`;
     return `<tr>
       <td>${nameCell}</td>
@@ -615,7 +620,7 @@ function toggleGuide(){
 }
 document.getElementById('guide-body').innerHTML=`
   <h4>이 페이지가 하는 일</h4>
-  수강생들이 에셋모으기에서 내보낸 채널 CSV 파일들을 한곳에 합치고, 같은 채널은 자동으로 하나로 묶어줍니다. 정리된 결과는 <b>마스터 파일</b> 한 장으로 내보내, 다시 수강생들에게 돌려줄 수 있습니다.
+  수강생들이 돈통에서 내보낸 채널 CSV 파일들을 한곳에 합치고, 같은 채널은 자동으로 하나로 묶어줍니다. 정리된 결과는 <b>마스터 파일</b> 한 장으로 내보내, 다시 수강생들에게 돌려줄 수 있습니다.
   <h4>작업 순서</h4>
   ① 공유 폴더에 있는 <b>여태 쌓인 마스터 파일</b>과 <b>이번에 새로 받은 수강생 파일들</b>을 위 영역에 한꺼번에 끌어다 놓습니다. (마스터·신규 구분 없이 다 넣으면 됩니다)<br>
   ② 같은 채널은 자동으로 합쳐지고, "몇 개 추가/병합"이 표시됩니다.<br>
