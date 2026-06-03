@@ -1267,10 +1267,10 @@ function renderBgmTable() {
           onerror="this.style.display='none'" alt="">`
       : '';
     const thumbHtml = (thumbImg && b.url)
-      ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="display:block;flex-shrink:0;">${thumbImg}</a>`
+      ? `<a href="${esc(safeUrl(b.url))}" target="_blank" rel="noopener noreferrer" title="유튜브에서 열기" style="display:block;flex-shrink:0;">${thumbImg}</a>`
       : thumbImg;
     const linkBtn = b.url
-      ? `<a href="${esc(b.url)}" target="_blank" title="유튜브에서 열기" style="text-decoration:none;font-size:18px;">▶️</a>`
+      ? `<a href="${esc(safeUrl(b.url))}" target="_blank" rel="noopener noreferrer" title="유튜브에서 열기" style="text-decoration:none;font-size:18px;">▶️</a>`
       : '';
     const favIcon = b.fav ? '⭐' : '☆';
     return `
@@ -1380,7 +1380,7 @@ function selectMood(mood) {
 
 function addCustomMood() {
   const input = document.getElementById('bgm-mood-custom-input');
-  const val = input.value.trim();
+  const val = cleanLabel(input.value);
   if (!val) return;
   if (!customMoods.includes(val) && !DEFAULT_MOODS.includes(val)) {
     customMoods.push(val);
@@ -1407,7 +1407,7 @@ function deleteCustomMood(mood) {
 }
 
 function editCustomMood(oldMood) {
-  const newMood = prompt('새 이름 입력:', oldMood);
+  const newMood = cleanLabel(prompt('새 이름 입력:', oldMood) || '');
   if (!newMood || newMood === oldMood) return;
   customMoods = customMoods.map(t => t === oldMood ? newMood : t);
   favMoods = favMoods.map(t => t === oldMood ? newMood : t);
@@ -1861,8 +1861,8 @@ function renderTChannelTable() {
     <tr>
       ${selCell('tchannel',c.id)}
       <td>${esc(c.platform)}</td>
-      <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">${esc(c.name)}</a>` : esc(c.name)}</td>
-      <td>${c.url ? `<a href="${esc(c.url)}" target="_blank">🔗</a>` : '-'}</td>
+      <td>${c.url ? `<a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>` : esc(c.name)}</td>
+      <td>${c.url ? `<a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">🔗</a>` : '-'}</td>
       <td>${esc(c.reason||'-')}</td>
       <td>${esc(c.style||'-')}</td>
       <td class="cell-actions">
@@ -1901,8 +1901,8 @@ function renderTSourceTable() {
     <tr>
       ${selCell('tsource',s.id)}
       <td>${esc(s.platform)}</td>
-      <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">${esc(s.title)}</a>` : esc(s.title)}</td>
-      <td>${s.url ? `<a href="${esc(s.url)}" target="_blank">🔗</a>` : '-'}</td>
+      <td>${s.url ? `<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>` : esc(s.title)}</td>
+      <td>${s.url ? `<a href="${esc(safeUrl(s.url))}" target="_blank" rel="noopener noreferrer">🔗</a>` : '-'}</td>
       <td>${esc(s.reason||'-')}</td>
       <td>${esc(s.style||'-')}</td>
       <td class="cell-actions">
@@ -2037,7 +2037,7 @@ function renderChannelTable() {
     return `
     <tr>
       ${selCell('channel',c.id)}
-      <td><a href="https://www.youtube.com/channel/${c.channelId}" target="_blank">${esc(c.name)}</a></td>
+      <td><a href="https://www.youtube.com/channel/${encodeURIComponent(c.channelId)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a></td>
       <td>${fmtNum(c.subs)}</td>
       <td>${fmtNum(c.videos)}</td>
       <td>${fmtNum(c.views)}</td>
@@ -2108,7 +2108,7 @@ function renderSourceTable() {
             onerror="this.style.display='none'" alt="">
         </div>`
       : '';
-    const linkUrl = vid ? `https://www.youtube.com/shorts/${vid}` : (s.url || '#');
+    const linkUrl = vid ? `https://www.youtube.com/shorts/${vid}` : safeUrl(s.url);
     return `
     <tr>
       ${selCell('source',s.id)}
@@ -2116,7 +2116,7 @@ function renderSourceTable() {
         <div class="src-title-cell">
           ${thumbHtml}
           <div class="src-title-text">
-            <a href="${esc(linkUrl)}" target="_blank">${esc(s.title)}</a>
+            <a href="${esc(linkUrl)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>
           </div>
         </div>
       </td>
@@ -2291,7 +2291,7 @@ function editItem(tab, id) {
       <input class="input-field" id="edit-style" value="${esc(item.style||'')}" placeholder="결">
     `;
     document.getElementById('editModalSave').onclick = () => {
-      item.type = document.getElementById('edit-type').value.trim();
+      item.type = cleanLabel(document.getElementById('edit-type').value);
       item.reason = document.getElementById('edit-reason').value.trim();
       item.ref = document.getElementById('edit-ref').value.trim();
       item.style = document.getElementById('edit-style').value.trim();
@@ -2309,7 +2309,7 @@ function editItem(tab, id) {
     document.getElementById('editModalSave').onclick = () => {
       item.title = document.getElementById('edit-title').value.trim();
       item.url = document.getElementById('edit-url').value.trim();
-      const newMood = document.getElementById('edit-mood').value.trim();
+      const newMood = cleanLabel(document.getElementById('edit-mood').value);
       // 새 분위기면 customMoods에 추가
       if (newMood && !DEFAULT_MOODS.includes(newMood) && !customMoods.includes(newMood)) {
         customMoods.push(newMood);
@@ -2329,7 +2329,7 @@ function editItem(tab, id) {
       <input class="input-field" id="edit-style" value="${esc(item.style||'')}" placeholder="결">
     `;
     document.getElementById('editModalSave').onclick = () => {
-      item.type = document.getElementById('edit-type').value.trim();
+      item.type = cleanLabel(document.getElementById('edit-type').value);
       item.reason = document.getElementById('edit-reason').value.trim();
       item.content = document.getElementById('edit-content').value.trim();
       item.style = document.getElementById('edit-style').value.trim();
@@ -2420,7 +2420,7 @@ function selectCtType(prefix, type) {
 
 function addCustomType(prefix) {
   const input = document.getElementById(prefix + '-ct-custom-input');
-  const val = input.value.trim();
+  const val = cleanLabel(input.value);
   if (!val) return;
   if (!customTypes.includes(val) && !YT_CATEGORIES.includes(val)) {
     customTypes.push(val);
@@ -2447,7 +2447,7 @@ function deleteCustomType(prefix, type) {
 }
 
 function editCustomType(prefix, oldType) {
-  const newType = prompt('새 이름 입력:', oldType);
+  const newType = cleanLabel(prompt('새 이름 입력:', oldType) || '');
   if (!newType || newType === oldType) return;
   customTypes = customTypes.map(t => t === oldType ? newType : t);
   favTypes = favTypes.map(t => t === oldType ? newType : t);
@@ -2722,7 +2722,8 @@ function importCSV(tab, inputEl) {
       for (let i = 1; i < rows.length; i++) {
         const r = rows[i];
         if (r.length < 4) continue;
-        const [title,mood,memo,url] = r;
+        let [title,mood,memo,url] = r;
+        mood = cleanLabel(mood);
         // 중복 체크: 링크 있으면 링크 기준, 없으면 곡명+분위기(공백/대소문자 무시)
         const isDup = bgms.some(b => bgmDedupMatch(b, {title, mood, url}));
         if (isDup) { skipped++; continue; }
@@ -2873,7 +2874,31 @@ function channelDedupKey(url, name) {
 // ===== ESCAPE HTML =====
 function esc(str) {
   if (!str) return '';
-  return str.toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return str.toString()
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// ===== 라벨 안전화 (XSS 방지) =====
+// 콘텐츠 유형·BGM 분위기처럼 사용자가 만든 "이름"은 드롭다운 onclick 속성에
+// 그대로 들어가므로 ' " < > 가 있으면 코드가 깨지거나 실행될 수 있다.
+// 이 4개 문자만 제거하고, 이모지·한글·다른 기호(· ~ ! ? # 등)는 그대로 통과.
+function cleanLabel(s) {
+  return (s || '').toString().replace(/['"<>]/g, '').trim();
+}
+
+// ===== URL 안전화 (위험 스킴 차단) =====
+// http/https 절대주소만 통과, javascript: 등은 '#' 으로 막음
+function safeUrl(url) {
+  url = (url || '').trim();
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return url;
+  } catch(e) {}
+  return '#';
 }
 
 // ===== CSV 셀 안전 처리 =====
