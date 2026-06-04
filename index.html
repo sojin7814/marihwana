@@ -2037,7 +2037,11 @@ function renderChannelTable() {
     return `
     <tr>
       ${selCell('channel',c.id)}
-      <td><a href="https://www.youtube.com/channel/${encodeURIComponent(c.channelId)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a></td>
+      <td>${c.url
+        ? `<a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>`
+        : (c.channelId
+            ? `<a href="https://www.youtube.com/channel/${encodeURIComponent(c.channelId)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>`
+            : esc(c.name))}</td>
       <td>${fmtNum(c.subs)}</td>
       <td>${fmtNum(c.videos)}</td>
       <td>${fmtNum(c.views)}</td>
