@@ -1629,7 +1629,9 @@ function saveChannel() {
 
   // 이미 담긴 채널이면 중복 저장 방지
   const newKey = channelDedupKey(urlEl.value.trim(), name);
-  if (channels.some(c => channelDedupKey(c.url, c.name) === newKey)) {
+  const newCid = urlEl.dataset.channelId || '';
+  if ((newCid && channels.some(c => c.channelId === newCid)) ||
+      channels.some(c => channelDedupKey(c.url, c.name) === newKey)) {
     toast('이미 저장된 채널입니다', 'error');
     return;
   }
@@ -2619,7 +2621,11 @@ function downloadCSV(tab, selectedOnly) {
     csv = '채널명,구독자,영상수,조회수,평균조회수,유형,스크랩이유,레퍼런스,결,링크\n';
     chList.forEach(c => {
       const avg = c.videos > 0 ? Math.round(c.views / c.videos) : 0;
-      csv += [c.name,c.subs,c.videos,c.views,avg,c.type,c.reason,c.ref,c.style,c.url]
+      // 링크는 채널ID 표준형(/channel/UC...)으로 내보낸다.
+      // 핸들·인코딩·시점이 달라도 같은 채널이면 staff 취합 시 자동 병합됨.
+      // (채널ID가 없는 옛 데이터만 원본 링크로 폴백)
+      const linkOut = c.channelId ? ('https://www.youtube.com/channel/' + c.channelId) : c.url;
+      csv += [c.name,c.subs,c.videos,c.views,avg,c.type,c.reason,c.ref,c.style,linkOut]
         .map(csvCell).join(',') + '\n';
     });
   } else if (tab === 'bgm') {
@@ -2713,7 +2719,7 @@ function importCSV(tab, inputEl) {
         if (channels.some(c => channelDedupKey(c.url, c.name) === key)) { skipped++; continue; }
         channels.push({
           id: genId(),
-          channelId: '', name, url,
+          channelId: (String(url).match(/\/channel\/(UC[0-9A-Za-z_-]+)/) || [])[1] || '', name, url,
           subs: parseInt(subs)||0, videos: parseInt(videos)||0, views: parseInt(views)||0,
           type, reason, ref, style,
           fav: false,
@@ -2810,7 +2816,7 @@ function importCSV(tab, inputEl) {
   reader.readAsArrayBuffer(file);
 }
 
-// CSV 인코딩 자동 감지: UTF-8로 먼저 읽고, 한글이 깨지면(치환문자 �) 한국 윈도우
+// CSV 인코딩 자동 감지: UTF-8로 먼저 읽고, 한글이 깨지면(치환문자  ) 한국 윈도우
 // 기본 인코딩(CP949/EUC-KR)으로 재디코딩. 탭 종류에 무관하게 동작.
 function decodeCsvBuffer(buf) {
   const bytes = new Uint8Array(buf);
