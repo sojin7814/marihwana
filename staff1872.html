@@ -293,6 +293,32 @@ function fmt(n){ return (parseInt(n)||0).toLocaleString('ko-KR'); }
 /* CSV 셀: 따옴표 이스케이프 + 엑셀 수식 인젝션 방지 */
 function csvCell(v){ v=(v||'').toString(); if(/^[=+\-@]/.test(v)) v="'"+v; return '"'+v.replace(/"/g,'""')+'"'; }
 
+/* 숫자 변환: 엑셀이 박은 천단위 콤마·공백·기타문자 제거 후 정수화 ("206,000"→206000) */
+function toInt(v){ return parseInt(String(v==null?'':v).replace(/[^\d]/g,''),10)||0; }
+
+/* http(s) 없는 주소 보정 ("www.youtube.com/..."→"https://www.youtube.com/...") */
+function normUrl(u){ u=(u||'').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u='https://'+u; return u; }
+
+/* 행에서 채널 링크 찾기: 정위치(링크칸)가 비었거나 엑셀로 칸이 밀린 파일 대비.
+   정해진 링크칸을 먼저 보고, 유튜브 주소가 아니면 행 전체에서 유튜브 주소처럼 생긴 칸을 탐색. */
+function findChannelUrl(r, linkIdx){
+  const isYt = s => /(?:youtube\.com|youtu\.be)/i.test(String(s||''));
+  if(isYt(r[linkIdx])) return normUrl(r[linkIdx]);
+  const hit = r.find(c => isYt(c));
+  if(hit) return normUrl(hit);
+  return r[linkIdx] ? normUrl(r[linkIdx]) : '';
+}
+
+/* 채널명 끝에 구독자수가 붙어버린 경우만 제거 ("네 이름은 이효리307,000"→"네 이름은 이효리").
+   구독자값과 정확히 일치할 때만 떼므로 "1분스킬","10초뉴스" 같은 정상 이름은 건드리지 않음. */
+function cleanChannelName(name, subs){
+  let n=(name||'').trim();
+  const a=String(subs||'').trim();           // "307,000"
+  const b=a.replace(/[^\d]/g,'');             // "307000"
+  for(const t of [a,b]){ if(t && t.length>=2 && n.endsWith(t)){ n=n.slice(0,-t.length).trim(); break; } }
+  return n;
+}
+
 /* 링크 기준 중복키 (돈통과 동일 로직): 채널ID > 핸들 > 링크 > 채널명 */
 function channelDedupKey(url, name){
   const u=(url||'').trim().toLowerCase();
@@ -379,7 +405,9 @@ function ingestOneFile(text, fname){
     if(r.length<4){ skipped++; continue; } // 채널명·숫자 기본칸도 없으면 깨진 줄 → 스킵
     while(r.length<11) r.push(''); // 엑셀에서 뒤칸 잘린 파일 대비: 부족분을 빈칸으로 채워 살림
     // 10칸: 채널명,구독자,영상수,조회수,평균조회수(버림),유형,스크랩이유,레퍼런스,결,링크 [,제출자]
-    const name=r[0], subs=r[1], videos=r[2], views=r[3], type=r[5], url=r[9];
+    const subs=r[1], videos=r[2], views=r[3], type=r[5];
+    const url=findChannelUrl(r, 9);            // 링크칸이 비거나 칸이 밀려도 행에서 유튜브 주소 탐색
+    const name=cleanChannelName(r[0], subs);   // 이름 끝에 붙은 구독자수 제거(정확히 일치할 때만)
     if(!name && !url){ skipped++; continue; }
     // 제출자 결정
     let subs_list;
@@ -397,9 +425,9 @@ function ingestOneFile(text, fname){
       channels.push({
         id: genId(),
         name, url,
-        subs: parseInt(subs)||0,
-        videos: parseInt(videos)||0,
-        views: parseInt(views)||0,
+        subs: toInt(subs),
+        videos: toInt(videos),
+        views: toInt(views),
         type: type||'',
         submitters: subs_list.filter(Boolean)
       });
