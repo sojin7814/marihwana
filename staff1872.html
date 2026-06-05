@@ -117,6 +117,13 @@ header {
   transition:all .15s; white-space:nowrap;
 }
 .btn:hover { border-color:var(--accent); color:var(--accent); }
+.apibar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:12px 0 4px; padding:10px 14px;
+  background:var(--bg-card); border:1px solid var(--border); border-radius:12px; }
+.apibar-label { font-size:13px; font-weight:700; color:var(--text-primary); white-space:nowrap; }
+.apibar input { flex:1; min-width:200px; padding:8px 11px; border:1px solid var(--border); border-radius:8px;
+  background:var(--bg-input); color:var(--text-primary); font-size:13px; font-family:'Noto Sans KR'; }
+.apibar input:focus { outline:none; border-color:var(--accent); }
+.apibar-status { font-size:12px; color:var(--text-secondary); white-space:nowrap; }
 .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
 .btn.primary:hover { background:var(--accent-dark); color:#fff; }
 .btn.danger:hover { border-color:var(--danger); color:var(--danger); }
@@ -220,6 +227,14 @@ tr:hover td { background:var(--bg-hover); }
     <div class="dz-main">CSV 파일을 여기에 끌어다 놓거나 클릭해서 선택</div>
     <div class="dz-sub">마스터 파일 + 새로 받은 수강생 파일 — 한꺼번에 여러 개 선택 가능</div>
     <input type="file" id="csv-input" accept=".csv" multiple style="display:none" onchange="handleFiles(this.files); this.value='';">
+  </div>
+
+  <div class="apibar" id="apibar">
+    <span class="apibar-label">🔑 YouTube API 키</span>
+    <input id="yt-key" type="password" placeholder="키 입력 후 저장 (브라우저에만 보관) · 옛 핸들 주소를 채널 ID로 변환해 중복 정리">
+    <button class="btn" onclick="saveYtKey()">저장</button>
+    <button class="btn" id="resolve-btn" onclick="resolveChannelIds(false)">🔧 채널 ID로 재정리</button>
+    <span id="resolve-status" class="apibar-status"></span>
   </div>
 
   <div class="stats">
@@ -331,6 +346,97 @@ function channelDedupKey(url, name){
   return 'name:'+(name||'').trim().toLowerCase();
 }
 
+/* ===== YouTube API 키 (옛 핸들/인코딩 주소 → 영구 채널 ID 변환용) ===== */
+/* 숫자(구독자/조회수 등)는 절대 안 건드림. 오직 "같은 채널인지" 판정에만 사용. */
+function getYtKey(){ return localStorage.getItem('staff_yt_apikey') || ''; }
+function saveYtKey(){
+  const v=(document.getElementById('yt-key').value||'').trim();
+  localStorage.setItem('staff_yt_apikey', v);
+  toast(v?'✅ API 키 저장됨':'API 키를 비웠습니다', v?'success':'error');
+}
+/* 해결 결과 캐시: 조회문자열 -> 채널ID (할당량 재소모 방지, 새로고침해도 유지) */
+let idCache = JSON.parse(localStorage.getItem('staff_id_cache') || '{}');
+function saveIdCache(){ localStorage.setItem('staff_id_cache', JSON.stringify(idCache)); }
+
+/* 링크에서 조회 대상 추출: 채널ID면 그대로, 아니면 핸들/사용자명 (인코딩 자동 해제) */
+function channelLookupTarget(url){
+  let u=(url||'').trim();
+  try{ u=decodeURIComponent(u); }catch(e){}
+  let m=u.match(/\/channel\/(UC[0-9A-Za-z_-]+)/i); if(m) return {type:'id', value:m[1]};
+  m=u.match(/@([^/?#\s]+)/);                        if(m) return {type:'handle', value:m[1]};
+  m=u.match(/\/(c|user)\/([^/?#\s]+)/i);            if(m) return {type:'custom', value:m[2]};
+  return null;
+}
+
+/* 핸들/사용자명 -> 채널ID 변환. forHandle(1유닛) 우선, 실패 시 search(100유닛) 폴백 */
+async function resolveToId(target, apikey){
+  if(!target) return '';
+  if(target.type==='id') return target.value;          // 이미 표준형 → 호출 안 함
+  const ck = target.type+':'+target.value.toLowerCase();
+  if(idCache[ck]) return idCache[ck];                   // 캐시 적중 → 호출 안 함
+  let id='';
+  try{
+    if(target.type==='handle'){
+      const r=await fetch(`https://www.googleapis.com/youtube/v3/channels?part=id&forHandle=${encodeURIComponent(target.value)}&key=${apikey}`);
+      if(r.ok){ const d=await r.json(); if(d.items&&d.items.length) id=d.items[0].id; }
+    }
+    if(!id){ // 핸들 실패 또는 custom/user 형식 → 검색 폴백
+      const r2=await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(target.value)}&type=channel&maxResults=1&key=${apikey}`);
+      if(r2.ok){ const d2=await r2.json(); if(d2.items&&d2.items.length) id=d2.items[0].snippet.channelId; }
+    }
+  }catch(e){ /* 네트워크 오류 등은 그냥 미해결 처리 */ }
+  if(id){ idCache[ck]=id; saveIdCache(); }              // 성공만 캐시 (실패는 다음 기회에 재시도)
+  return id;
+}
+
+/* 현재 채널 목록의 링크를 채널ID 표준형으로 변환 후, 같은 ID끼리 재병합.
+   숫자 데이터는 first-wins로 보존, 빈칸만 뒤 행에서 채움, 제출자는 합집합. */
+async function resolveChannelIds(auto){
+  const apikey=getYtKey();
+  const statusEl=document.getElementById('resolve-status');
+  const btn=document.getElementById('resolve-btn');
+  if(!apikey){
+    if(!auto){ toast('먼저 API 키를 저장해주세요','error'); document.getElementById('yt-key').focus(); }
+    return;
+  }
+  // 변환이 필요한(=표준형 아닌) 채널만 추림
+  const need=channels.filter(c=>{ const t=channelLookupTarget(c.url); return t && t.type!=='id'; });
+  if(!need.length){ if(!auto) toast('변환할 핸들 주소가 없습니다 (이미 모두 채널ID)','success'); return; }
+
+  if(btn) btn.disabled=true;
+  let done=0, ok=0;
+  for(const c of need){
+    done++;
+    if(statusEl) statusEl.textContent=`변환 중… ${done}/${need.length}`;
+    const t=channelLookupTarget(c.url);
+    const id=await resolveToId(t, apikey);
+    if(id){ c.url='https://www.youtube.com/channel/'+id; ok++; }
+  }
+
+  // 표준형이 된 링크로 재병합 (기존 dedup 로직 그대로 재사용)
+  const map=new Map(); const out=[];
+  for(const c of channels){
+    const k=channelDedupKey(c.url, c.name);
+    if(map.has(k)){
+      const e=map.get(k);
+      (c.submitters||[]).forEach(s=>{ if(s && !e.submitters.includes(s)) e.submitters.push(s); });
+      if(!e.type && c.type) e.type=c.type;          // 빈칸만 보강 (데이터는 first-wins)
+      if(!e.subs && c.subs) e.subs=c.subs;
+      if(!e.videos && c.videos) e.videos=c.videos;
+      if(!e.views && c.views) e.views=c.views;
+    } else {
+      const copy=Object.assign({}, c, {submitters:[...(c.submitters||[])]});
+      map.set(k, copy); out.push(copy);
+    }
+  }
+  const mergedCount=channels.length-out.length;
+  channels=out;
+  save(); renderAll();
+  if(btn) btn.disabled=false;
+  if(statusEl) statusEl.textContent=`완료 · ${ok}개 변환, ${mergedCount}건 추가 병합`;
+  toast(`🔧 채널 ID 변환 ${ok}개 · 추가 병합 ${mergedCount}건`, 'success');
+}
+
 /* 제출자 이름 정규화: 구분자(;)와 앞뒤 공백 제거 (CSV 왕복 시 한 명이 둘로 쪼개지는 것 방지) */
 function cleanSubmitter(s){ return (s||'').toString().replace(/;/g,' ').replace(/\s+/g,' ').trim(); }
 
@@ -385,6 +491,8 @@ function handleFiles(fileList){
         let msg=`✅ 채널 ${totalAdded}개 추가, ${totalMerged}건 중복 병합`;
         if(badFiles.length) msg+=` · ⚠️ 형식 안 맞는 파일 ${badFiles.length}개 건너뜀`;
         toast(msg, badFiles.length?'error':'success');
+        // API 키가 있으면 이어서 핸들→채널ID 변환·재병합 자동 실행
+        if(getYtKey()) resolveChannelIds(true);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -690,6 +798,7 @@ document.getElementById('guide-body').innerHTML=`
 
 /* ===== INIT ===== */
 function renderAll(){ renderStats(); renderTable(); }
+(function(){ const k=getYtKey(); if(k){ const el=document.getElementById('yt-key'); if(el) el.value=k; } })();
 renderAll();
 
 </script>
