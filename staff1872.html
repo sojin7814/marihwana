@@ -334,12 +334,16 @@ function channelDedupKey(url, name){
 /* 제출자 이름 정규화: 구분자(;)와 앞뒤 공백 제거 (CSV 왕복 시 한 명이 둘로 쪼개지는 것 방지) */
 function cleanSubmitter(s){ return (s||'').toString().replace(/;/g,' ').replace(/\s+/g,' ').trim(); }
 
-/* 파일명에서 제출자 추출: 에셋_채널_{이름}_YYYY-MM-DD.csv */
+/* 파일명에서 제출자 추출: 에셋_채널_{이름}_YYYY-MM-DD.csv
+   날짜 구분자는 - 또는 _ 둘 다 허용, 날짜 뒤에 " (4)" 같은 윈도우 중복 꼬리표가 붙어도 무시. */
 function submitterFromFilename(fname){
   const base=fname.replace(/\.csv$/i,'');
-  const m=base.match(/^에셋_채널_(.+)_\d{4}-\d{2}-\d{2}$/);
+  // 이름 뒤에 _날짜(-또는_구분) + 선택적 꼬리표(공백/괄호 등)로 끝나는 경우
+  let m=base.match(/^에셋_채널_(.+?)_\d{4}[-_]\d{2}[-_]\d{2}(?:\s*\(\d+\))?\s*$/);
   if(m) return cleanSubmitter(m[1]);
-  // 형식이 다르면 파일명 그대로(확장자만 제거) — 스태프가 식별하도록
+  // 날짜가 아예 없거나 형식이 더 어긋나도, 최소한 "에셋_채널_" 접두사는 떼서 그나마 깔끔하게
+  m=base.match(/^에셋_채널_(.+)$/);
+  if(m) return cleanSubmitter(m[1]);
   return cleanSubmitter(base);
 }
 
