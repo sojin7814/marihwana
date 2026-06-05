@@ -372,7 +372,8 @@ function handleFiles(fileList){
   files.forEach(file=>{
     const reader=new FileReader();
     reader.onload=function(e){
-      const res=ingestOneFile(e.target.result, file.name);
+      const text=decodeCsvBuffer(e.target.result);   // UTF-8/CP949 자동 감지
+      const res=ingestOneFile(text, file.name);
       if(res.bad){ badFiles.push(file.name); }
       else { totalAdded+=res.added; totalMerged+=res.merged; totalSkipped+=res.skipped; }
       if(--pending===0){
@@ -382,8 +383,22 @@ function handleFiles(fileList){
         toast(msg, badFiles.length?'error':'success');
       }
     };
-    reader.readAsText(file,'utf-8');
+    reader.readAsArrayBuffer(file);
   });
+}
+
+/* CSV 인코딩 자동 감지: UTF-8로 먼저 읽고, 헤더 한글이 깨져있으면 한국 윈도우 기본
+   인코딩(CP949/EUC-KR)으로 재디코딩. 메모장/엑셀에서 그냥 저장한 파일(CP949) 구제용. */
+function decodeCsvBuffer(buf){
+  const bytes=new Uint8Array(buf);
+  let utf8='';
+  try{ utf8=new TextDecoder('utf-8',{fatal:false}).decode(bytes); }catch(e){}
+  if(/채널명/.test(utf8)) return utf8;        // UTF-8로 한글이 멀쩡 → 그대로
+  try{
+    const euc=new TextDecoder('euc-kr',{fatal:false}).decode(bytes);  // CP949 포함
+    if(/채널명/.test(euc)) return euc;
+  }catch(e){}
+  return utf8;                                 // 둘 다 실패 시 기존 동작 유지
 }
 
 function ingestOneFile(text, fname){
