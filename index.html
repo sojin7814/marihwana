@@ -2720,7 +2720,7 @@ function importCSV(tab, inputEl) {
         channels.push({
           id: genId(),
           channelId: (String(url).match(/\/channel\/(UC[0-9A-Za-z_-]+)/) || [])[1] || '', name, url,
-          subs: parseInt(subs)||0, videos: parseInt(videos)||0, views: parseInt(views)||0,
+          subs: toIntCSV(subs), videos: toIntCSV(videos), views: toIntCSV(views),
           type, reason, ref, style,
           fav: false,
           date: new Date().toISOString()
@@ -2765,7 +2765,7 @@ function importCSV(tab, inputEl) {
           id: genId(),
           videoId: '', title, url, channel,
           uploadDate: uploadDate || '',
-          views: parseInt(views)||0,
+          views: toIntCSV(views),
           type, reason, content, style,
           fav: false,
           date: new Date().toISOString()
@@ -2883,6 +2883,10 @@ function safeFileName(s) {
 // ===== 채널 중복 판정용 정규화 키 =====
 // 링크에서 채널을 가리키는 고유 조각을 뽑아 통일한다.
 // 우선순위: 채널ID(UC...) > 핸들(@name) > (링크 없으면) 채널명
+/* CSV 숫자 파싱: 쉼표·공백 등 숫자 아닌 문자 제거 후 정수화.
+   돈통 자체 내보내기는 쉼표 없지만, 구글시트·엑셀로 만든 파일은 "7,800" 형식이라 그대로 두면 7로 깨짐 */
+function toIntCSV(v){ return parseInt(String(v==null?'':v).replace(/[^\d]/g,''),10)||0; }
+
 function channelDedupKey(url, name) {
   const u = (url || '').trim().toLowerCase();
   if (u) {
