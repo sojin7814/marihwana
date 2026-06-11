@@ -234,6 +234,7 @@ tr:hover td { background:var(--bg-hover); }
     <input id="yt-key" type="password" placeholder="키 입력 후 저장 (브라우저에만 보관) · 옛 핸들 주소를 채널 ID로 변환해 중복 정리">
     <button class="btn" onclick="saveYtKey()">저장</button>
     <button class="btn" id="resolve-btn" onclick="resolveChannelIds(false)">🔧 채널 ID로 재정리</button>
+    <button class="btn" id="refetch-btn" onclick="refetchBrokenStats(false)">🔄 깨진 채널 숫자 다시 받기</button>
     <span id="resolve-status" class="apibar-status"></span>
   </div>
 
@@ -322,6 +323,18 @@ function findChannelUrl(r, linkIdx){
   const hit = r.find(c => isYt(c));
   if(hit) return normUrl(hit);
   return r[linkIdx] ? normUrl(r[linkIdx]) : '';
+}
+
+/* 링크가 '채널' 주소인지 검사. 채널 식별자(/channel/UC, @핸들, /c/, /user/)가 있어야 채널로 인정.
+   쇼츠·영상·재생목록(/shorts/VID, /watch?v=, youtu.be/VID, /embed/, list=)은 채널이 아니므로 false.
+   주의: youtube.com/@핸들/shorts 같은 '채널 쇼츠탭'은 @핸들이 잡혀서 true 유지. */
+function isChannelUrl(u){
+  u=String(u||'').toLowerCase();
+  if(!u) return false;
+  if(/\/channel\/uc[\w-]+/.test(u)) return true;     // /channel/UC...
+  if(/@[^/?#\s]+/.test(u)) return true;              // @핸들
+  if(/\/(c|user)\/[^/?#\s]+/.test(u)) return true;   // /c/이름, /user/이름
+  return false;                                       // 그 외(쇼츠·영상·youtu.be·재생목록) = 채널 아님
 }
 
 /* 채널명 끝에 구독자수가 붙어버린 경우만 제거 ("네 이름은 이효리307,000"→"네 이름은 이효리").
@@ -437,6 +450,64 @@ async function resolveChannelIds(auto){
   toast(`🔧 채널 ID 변환 ${ok}개 · 추가 병합 ${mergedCount}건`, 'success');
 }
 
+/* 잘림 의심 판정: 구독자가 세 자리 이하인데 조회수 큼 / 영상수가 한 자리인데 조회수 큼 */
+function isLikelyBroken(c){
+  const s=c.subs||0, v=c.videos||0, w=c.views||0;
+  if(s>0 && s<1000 && w>30000000) return true;   // 구독자 잘림 의심
+  if(v>=1 && v<=9 && w>10000000) return true;     // 영상수 잘림 의심
+  return false;
+}
+
+/* 깨진 채널의 구독자·영상수·조회수를 유튜브에서 다시 받아 '덮어씀'.
+   재정리(링크만 정리)와 달리 숫자를 강제로 갱신한다. 채널ID가 있는 채널만 대상.
+   forceAll=true면 전체, false면 잘림 의심 채널만 (할당량 절약). */
+async function refetchBrokenStats(forceAll){
+  const apikey=getYtKey();
+  const statusEl=document.getElementById('resolve-status');
+  const btn=document.getElementById('refetch-btn');
+  if(!apikey){ toast('먼저 API 키를 저장해주세요','error'); document.getElementById('yt-key').focus(); return; }
+
+  // 채널ID(/channel/UC) 있는 채널만 — 핸들만 있으면 먼저 '채널 ID로 재정리' 필요
+  const byId=new Map();
+  channels.forEach(c=>{
+    const t=channelLookupTarget(c.url);
+    if(!t || t.type!=='id') return;
+    if(!forceAll && !isLikelyBroken(c)) return;
+    if(!byId.has(t.value)) byId.set(t.value, []);
+    byId.get(t.value).push(c);            // 같은 ID 여러 행이면 다 갱신
+  });
+  const ids=[...byId.keys()];
+  if(!ids.length){ toast(forceAll?'채널ID가 있는 채널이 없습니다':'다시 받을 깨진 채널이 없습니다 🎉','success'); return; }
+  if(!confirm(`${ids.length}개 채널의 구독자·영상수·조회수를 유튜브에서 다시 받아 덮어씁니다.\n진행할까요?`)) return;
+
+  if(btn) btn.disabled=true;
+  let ok=0, fail=0;
+  for(let i=0;i<ids.length;i+=50){                  // channels.list는 id 50개까지 한 번에
+    const batch=ids.slice(i,i+50);
+    if(statusEl) statusEl.textContent=`다시 받는 중… ${Math.min(i+batch.length,ids.length)}/${ids.length}`;
+    try{
+      const r=await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${batch.join(',')}&key=${apikey}`);
+      if(r.ok){
+        const d=await r.json();
+        (d.items||[]).forEach(it=>{
+          const arr=byId.get(it.id); const st=it.statistics;
+          if(!arr || !st) return;
+          arr.forEach(c=>{
+            if(st.subscriberCount!=null && st.subscriberCount!=='') c.subs=toInt(st.subscriberCount);
+            if(st.videoCount!=null && st.videoCount!=='')           c.videos=toInt(st.videoCount);
+            if(st.viewCount!=null && st.viewCount!=='')             c.views=toInt(st.viewCount);
+          });
+          ok++;
+        });
+      } else { fail+=batch.length; }
+    }catch(e){ fail+=batch.length; }
+  }
+  save(); renderAll();
+  if(btn) btn.disabled=false;
+  if(statusEl) statusEl.textContent=`완료 · ${ok}개 채널 숫자 갱신${fail?(' · 실패 '+fail):''}`;
+  toast(`🔄 ${ok}개 채널 숫자 갱신${fail?(' · 실패 '+fail):''}`, fail?'error':'success');
+}
+
 /* 제출자 이름 정규화: 구분자(;)와 앞뒤 공백 제거 (CSV 왕복 시 한 명이 둘로 쪼개지는 것 방지) */
 function cleanSubmitter(s){ return (s||'').toString().replace(/;/g,' ').replace(/\s+/g,' ').trim(); }
 
@@ -478,19 +549,20 @@ function handleFiles(fileList){
   const files=Array.from(fileList||[]).filter(f=>/\.csv$/i.test(f.name));
   if(!files.length){ toast('CSV 파일이 없습니다','error'); return; }
   let pending=files.length;
-  let totalAdded=0, totalMerged=0, totalSkipped=0, badFiles=[];
+  let totalAdded=0, totalMerged=0, totalSkipped=0, totalBlocked=0, badFiles=[];
   files.forEach(file=>{
     const reader=new FileReader();
     reader.onload=function(e){
       const text=decodeCsvBuffer(e.target.result);   // UTF-8/CP949 자동 감지
       const res=ingestOneFile(text, file.name);
       if(res.bad){ badFiles.push(file.name); }
-      else { totalAdded+=res.added; totalMerged+=res.merged; totalSkipped+=res.skipped; }
+      else { totalAdded+=res.added; totalMerged+=res.merged; totalSkipped+=res.skipped; totalBlocked+=(res.blocked||0); }
       if(--pending===0){
         save(); renderAll();
         let msg=`✅ 채널 ${totalAdded}개 추가, ${totalMerged}건 중복 병합`;
+        if(totalBlocked) msg+=` · 🚫 채널 아닌 링크(쇼츠·영상) ${totalBlocked}행 차단`;
         if(badFiles.length) msg+=` · ⚠️ 형식 안 맞는 파일 ${badFiles.length}개 건너뜀`;
-        toast(msg, badFiles.length?'error':'success');
+        toast(msg, (badFiles.length||totalBlocked)?'error':'success');
         // API 키가 있으면 이어서 핸들→채널ID 변환·재병합 자동 실행
         if(getYtKey()) resolveChannelIds(true);
       }
@@ -526,7 +598,7 @@ function ingestOneFile(text, fname){
   const hasSubmitterCol = headerStr.includes('제출자'); // 마스터 파일이면 true
   const fileSubmitter = submitterFromFilename(fname);   // 수강생 파일용
 
-  let added=0, merged=0, skipped=0;
+  let added=0, merged=0, skipped=0, blocked=0;
   for(let i=1;i<rows.length;i++){
     const r=rows[i];
     if(r.length<4){ skipped++; continue; } // 채널명·숫자 기본칸도 없으면 깨진 줄 → 스킵
@@ -536,6 +608,9 @@ function ingestOneFile(text, fname){
     const url=findChannelUrl(r, 9);            // 링크칸이 비거나 칸이 밀려도 행에서 유튜브 주소 탐색
     const name=cleanChannelName(r[0], subs);   // 이름 끝에 붙은 구독자수 제거(정확히 일치할 때만)
     if(!name && !url){ skipped++; continue; }
+    // 채널이 아닌 유튜브 링크(쇼츠·영상 등)가 들어온 행은 차단 — 잘못된 통계가 섞이는 것 방지
+    const isYtLink=/(?:youtube\.com|youtu\.be)/i.test(url);
+    if(url && isYtLink && !isChannelUrl(url)){ blocked++; continue; }
     // 제출자 결정
     let subs_list;
     if(hasSubmitterCol && r[10]) subs_list = r[10].split(';').map(s=>cleanSubmitter(s)).filter(Boolean);
@@ -561,7 +636,7 @@ function ingestOneFile(text, fname){
       added++;
     }
   }
-  return {added, merged, skipped};
+  return {added, merged, skipped, blocked};
 }
 
 /* ===== 집계 ===== */
