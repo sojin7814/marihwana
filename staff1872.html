@@ -250,7 +250,16 @@ tr:hover td { background:var(--bg-hover); }
 
   <div class="toolbar">
     <input class="search-input" id="search" placeholder="채널명·유형 검색…" oninput="renderTable()">
+    <button class="btn" id="select-mode-btn" onclick="toggleSelectMode()">🗑 선택 삭제</button>
     <button class="btn primary" onclick="exportMaster()">📥 새 마스터로 내보내기</button>
+  </div>
+
+  <div class="select-bar" id="select-bar" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;background:rgba(255,51,68,.08);border:1px solid var(--accent,#ff3344);border-radius:8px;">
+    <span id="sel-count" style="font-weight:700;">선택 0 / 전체 0개</span>
+    <button class="btn" onclick="selectAllVisible()">화면 전체 선택</button>
+    <button class="btn" onclick="clearSelection()">선택 해제</button>
+    <button class="btn" id="sel-delete-btn" onclick="deleteSelected()" style="margin-left:auto;border-color:#ff3344;color:#ff3344;" disabled>🗑 선택 0개 삭제</button>
+    <button class="btn" onclick="toggleSelectMode()">✖ 취소</button>
   </div>
 
   <div class="table-wrap">
@@ -291,6 +300,9 @@ let customTypes = JSON.parse(localStorage.getItem('staff_custom_types') || '[]')
 let favTypes = JSON.parse(localStorage.getItem('staff_fav_types') || '[]');
 let sortKey = 'bench', sortDir = 'desc';
 let activePanelId = null;
+// 선택 삭제 모드 (저장 안 함, 새로고침 시 초기화)
+let selectMode = false;
+let selectedIds = new Set();
 let submittersCollapsed = null; // null=자동(30명초과시 접힘), true/false=사용자 선택
 
 function save() {
@@ -305,6 +317,17 @@ function esc(str){ if(str===0) return '0'; if(!str) return ''; return str.toStri
 function safeUrl(url){ url=(url||'').trim(); try{ const u=new URL(url); if(u.protocol==='http:'||u.protocol==='https:') return url; }catch(e){} return '#'; }
 function genId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
 function fmt(n){ return (parseInt(n)||0).toLocaleString('ko-KR'); }
+
+/* 화면 하단 알림 (이전엔 정의가 없어 호출이 조용히 실패하고 있었음) */
+function toast(msg, type){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=msg;
+  t.className=(type||'');
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove('show'), 3000);
+}
 
 /* CSV 셀: 따옴표 이스케이프 + 엑셀 수식 인젝션 방지 */
 function csvCell(v){ v=(v||'').toString(); if(/^[=+\-@]/.test(v)) v="'"+v; return '"'+v.replace(/"/g,'""')+'"'; }
@@ -694,7 +717,8 @@ function sortBy(key){
 }
 
 function renderThead(){
-  document.getElementById('thead-row').innerHTML=COLS.map(c=>{
+  const checkTh = selectMode ? '<th class="no-sort" style="width:34px;text-align:center;">✓</th>' : '';
+  document.getElementById('thead-row').innerHTML = checkTh + COLS.map(c=>{
     const arrow = sortKey===c.key ? `<span class="sort-arrow">${sortDir==='asc'?'▲':'▼'}</span>` : '';
     return `<th class="${c.nosort?'no-sort':''}" ${c.nosort?'':`onclick="sortBy('${c.key}')"`}>${c.label}${arrow}</th>`;
   }).join('');
@@ -718,12 +742,15 @@ function renderTable(){
   });
 
   const tb=document.getElementById('tbody');
-  if(!list.length){ tb.innerHTML=`<tr><td colspan="${COLS.length}" style="text-align:center;color:var(--text-muted);padding:30px;">${channels.length?'검색 결과가 없습니다.':'CSV 파일을 가져오면 여기에 표시됩니다.'}</td></tr>`; return; }
+  const totalCols = COLS.length + (selectMode?1:0);
+  if(!list.length){ tb.innerHTML=`<tr><td colspan="${totalCols}" style="text-align:center;color:var(--text-muted);padding:30px;">${channels.length?'검색 결과가 없습니다.':'CSV 파일을 가져오면 여기에 표시됩니다.'}</td></tr>`; if(selectMode) updateSelBar(); return; }
   tb.innerHTML=list.map(c=>{
     const link=c.url? `<a class="ch-link" href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">바로가기 ↗</a>` : '<span style="color:var(--text-muted)">-</span>';
     const nameCell = c.url? `<a class="ch-link" href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>` : esc(c.name);
     const typeDisp = c.type? `${esc(c.type)}<span class="ed-ic">✏️</span>` : `<span class="type-empty">미분류 ✏️</span>`;
+    const checkTd = selectMode ? `<td style="text-align:center;"><input type="checkbox" style="width:17px;height:17px;cursor:pointer;accent-color:#ff3344;" ${selectedIds.has(c.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleSelect(${c.id},this.checked)"></td>` : '';
     return `<tr>
+      ${checkTd}
       <td>${nameCell}</td>
       <td class="num">${fmt(c.subs)}</td>
       <td class="num">${fmt(c.videos)}</td>
@@ -734,6 +761,57 @@ function renderTable(){
       <td>${link}</td>
     </tr>`;
   }).join('');
+  if(selectMode) updateSelBar();
+}
+
+/* ===== 선택 삭제 ===== */
+function toggleSelectMode(){
+  selectMode = !selectMode;
+  const bar = document.getElementById('select-bar');
+  const btn = document.getElementById('select-mode-btn');
+  if(selectMode){
+    bar.style.display = 'flex';
+    btn.textContent = '🗑 선택 삭제 중…';
+    btn.classList.add('primary');
+  } else {
+    bar.style.display = 'none';
+    btn.textContent = '🗑 선택 삭제';
+    btn.classList.remove('primary');
+    selectedIds.clear();
+  }
+  renderTable();
+}
+function toggleSelect(id, checked){
+  if(checked) selectedIds.add(id); else selectedIds.delete(id);
+  updateSelBar();
+}
+function selectAllVisible(){
+  // 현재 검색 필터에 보이는 채널만 전체 선택
+  const q=(document.getElementById('search').value||'').trim().toLowerCase();
+  channels.forEach(c=>{
+    if(!q || (c.name||'').toLowerCase().includes(q) || (c.type||'').toLowerCase().includes(q)) selectedIds.add(c.id);
+  });
+  renderTable();
+}
+function clearSelection(){
+  selectedIds.clear();
+  renderTable();
+}
+function updateSelBar(){
+  const n = channels.filter(c=>selectedIds.has(c.id)).length; // 실제 존재하는 선택분만
+  const cnt=document.getElementById('sel-count');
+  const del=document.getElementById('sel-delete-btn');
+  if(cnt) cnt.textContent = `선택 ${n} / 전체 ${channels.length}개`;
+  if(del){ del.textContent = `🗑 선택 ${n}개 삭제`; del.disabled = (n===0); }
+}
+function deleteSelected(){
+  const n = channels.filter(c=>selectedIds.has(c.id)).length;
+  if(n===0) return;
+  if(!confirm(`선택한 채널 ${n}개를 삭제할까요?\n삭제 후 [📥 새 마스터로 내보내기]를 눌러야 파일에 반영됩니다.`)) return;
+  channels = channels.filter(c=>!selectedIds.has(c.id));
+  selectedIds.clear();
+  save(); renderAll();
+  toast(`🗑 ${n}개 삭제 완료 · 내보내기로 저장하세요`);
 }
 
 /* ===== 유형 드롭다운 (직접입력 > 즐겨찾기 > YT카테고리) ===== */
