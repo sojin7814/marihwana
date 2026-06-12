@@ -670,8 +670,7 @@ table.selmode .sel-col { display:table-cell; }
       </select>
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV('channel')">📥 전체 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('channel')">✅ 선택 내보내기</button>
-      <!-- [과제기간 임시숨김] 아래 버튼의 style="display:none"만 지우면 다시 보임 -->
-      <button class="btn btn-secondary btn-sm" style="display:none" onclick="document.getElementById('ch-csv-input').click()">📤 가져오기</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ch-csv-input').click()">📤 가져오기</button>
       <input type="file" id="ch-csv-input" accept=".csv" style="display:none" onchange="importCSV('channel',this)">
       <button class="btn btn-sm btn-reset" onclick="resetTab('channel')">🧹 초기화</button>
       <span class="item-count" id="ch-count"></span>
