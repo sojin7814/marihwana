@@ -1046,6 +1046,28 @@ table.selmode .sel-col { display:table-cell; }
 </div>
 
 
+<!-- EXPORT WARNING MODAL -->
+<div class="modal-overlay" id="exportWarnModal">
+  <div class="modal" style="max-width:440px;">
+    <h2 style="color:var(--danger);">⚠️ 잠깐! 내보내기 전 꼭 읽어주세요</h2>
+    <div style="background:rgba(255,68,102,.1);border:1px solid var(--danger);border-radius:10px;padding:16px;margin-bottom:16px;font-size:14px;line-height:1.9;color:var(--text-primary);">
+      <div style="font-weight:700;font-size:15px;margin-bottom:10px;">📛 이 파일은 <span style="color:var(--danger);">절대 열어보지 마세요.</span></div>
+      <div style="color:var(--text-secondary);">
+        엑셀·메모장 등으로 한 번이라도 <b style="color:var(--text-primary);">열었다가 저장</b>하면<br>
+        숫자가 깨지거나 칸이 밀려서<br>
+        <b style="color:var(--danger);">제출 데이터가 망가집니다.</b>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);color:var(--text-secondary);">
+        ✅ 받은 파일은 <b style="color:var(--text-primary);">열지 말고 그대로</b> 카페에 올려주세요.
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" style="flex:0 0 auto;" onclick="closeExportWarning()">취소</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="proceedExport()">열지 않고 그대로 제출할게요 📥</button>
+    </div>
+  </div>
+</div>
+
 <!-- EASTER EGG MODAL -->
 <div class="modal-overlay" id="easterModal">
   <div class="modal" style="max-width:420px;text-align:center;padding:32px;">
@@ -2595,7 +2617,32 @@ function updateSelectBar(tab) {
 }
 
 // ===== CSV DOWNLOAD =====
+// 내보내기 누르면 먼저 '파일 열지 마세요' 경고 팝업을 띄우고,
+// 확인을 눌러야 실제 다운로드(runDownloadCSV)가 진행된다.
+let _pendingExport = null;
 function downloadCSV(tab, selectedOnly) {
+  // 선택 내보내기인데 아무것도 선택 안 했으면 경고 띄우기 전에 먼저 차단
+  if (selectedOnly) {
+    const sel = selectedIds[tab];
+    const picked = selTabArray(tab).filter(x => sel.has(x.id));
+    if (!picked.length) { alert('선택된 항목이 없습니다.\n내보낼 항목을 체크해 주세요.'); return; }
+  }
+  _pendingExport = { tab, selectedOnly };
+  document.getElementById('exportWarnModal').classList.add('open');
+}
+function closeExportWarning() {
+  document.getElementById('exportWarnModal').classList.remove('open');
+  _pendingExport = null;
+}
+function proceedExport() {
+  document.getElementById('exportWarnModal').classList.remove('open');
+  if (!_pendingExport) return;
+  const { tab, selectedOnly } = _pendingExport;
+  _pendingExport = null;
+  runDownloadCSV(tab, selectedOnly);
+}
+
+function runDownloadCSV(tab, selectedOnly) {
   const exporter = askExporterName();
   if (exporter === null) return; // 사용자가 취소하면 내보내기 중단
 
