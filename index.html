@@ -2781,7 +2781,9 @@ function importCSV(tab, inputEl) {
         if (r.length < 4) continue;
         let [title,mood,memo,url] = r;
         mood = cleanLabel(mood);
-        // 중복 체크: 링크 있으면 링크 기준, 없으면 곡명+분위기(공백/대소문자 무시)
+        url = (url || '').trim();
+        if (!url) { skipped++; continue; }   // 링크 없으면 건너뜀
+        // 중복 체크: 링크(유튜브 ID) 기준
         const isDup = bgms.some(b => bgmDedupMatch(b, {title, mood, url}));
         if (isDup) { skipped++; continue; }
         // 새 분위기면 customMoods에 추가
@@ -2993,15 +2995,11 @@ function csvCell(v) {
 function bgmDedupMatch(a, b) {
   const aUrl = (a.url || '').trim();
   const bUrl = (b.url || '').trim();
-  if (aUrl && bUrl) {
-    const aId = extractYouTubeId(aUrl);
-    const bId = extractYouTubeId(bUrl);
-    if (aId && bId) return aId === bId;            // 같은 유튜브 영상이면 중복
-    return aUrl.toLowerCase() === bUrl.toLowerCase(); // 그 외엔 링크 문자열 비교
-  }
-  // 링크가 없으면 곡명+분위기로 비교 (앞뒤 공백 제거 + 소문자)
-  const norm = s => (s || '').trim().toLowerCase();
-  return norm(a.title) === norm(b.title) && norm(a.mood) === norm(b.mood);
+  if (!aUrl || !bUrl) return false;                // 링크 없으면 중복 판정 안 함
+  const aId = extractYouTubeId(aUrl);
+  const bId = extractYouTubeId(bUrl);
+  if (aId && bId) return aId === bId;              // 같은 유튜브 영상이면 중복
+  return aUrl.toLowerCase() === bUrl.toLowerCase(); // 유튜브 아니면 링크 문자열 비교
 }
 
 // ===== Close modals on overlay click =====
