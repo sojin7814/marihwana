@@ -2917,7 +2917,7 @@ function genId() {
 // 한 번 입력하면 저장해두고, 다음부터는 기본값으로 제시(수정 가능)
 function askExporterName() {
   const saved = localStorage.getItem('dontong_exporter') || '';
-  const input = prompt('내보내기 파일에 넣을 이름을 입력하세요.\n예) 조@호(유툽꿈나무)', saved);
+  const input = prompt('내보내기 파일에 넣을 이름을 입력하세요.\n예) 윤@웅(마라하기)', saved);
   if (input === null) return null; // 취소
   const name = input.trim();
   localStorage.setItem('dontong_exporter', name);
