@@ -1851,7 +1851,9 @@ function channelBadge(c){
   return '';
 }
 function deltaTitle(c){
-  return c.refreshedAt ? ('지난 갱신(' + fmtWhen(c.refreshedAt) + ') 대비') : '지난 갱신 대비';
+  const base = c.prevRefreshedAt || c.date || '';
+  if (!base) return '직전 대비';
+  return (c.prevRefreshedAt ? '지난 갱신(' : '저장 당시(') + fmtWhen(base) + ') 대비';
 }
 function fmtWhen(iso){
   try{
@@ -1933,7 +1935,7 @@ async function doRefreshChannels(){
   }catch(e){ __refreshing=false; toast('오류: '+e.message,'error'); return; }
 
   const now = new Date().toISOString();
-  const rep = { at: now, total: withId.length, updated:0, dead:[], newDead:[], revived:[], surged:[], emptied:[] };
+  const rep = { at: now, total: withId.length, skipped: skipped, updated:0, dead:[], newDead:[], revived:[], surged:[], emptied:[] };
 
   channels.forEach(c=>{
     if (!isUcId(c.channelId)) return;
@@ -1949,6 +1951,7 @@ async function doRefreshChannels(){
     const os=c.subs||0, ov=c.views||0, od=c.videos||0;
     // 이번 회차 기준값 항상 기록 (직전 회차 대비 증감용)
     c.subsPrev=os; c.viewsPrev=ov; c.videosPrev=od;
+    c.prevRefreshedAt = c.refreshedAt || '';  // 증감 기준 시점 (직전 갱신)
 
     const vJump = ov>0 ? (f.views-ov)/ov : 0;
     const sJump = os>0 ? (f.subs-os)/os : 0;
@@ -2046,6 +2049,9 @@ function renderReport(){
   if (__rpFilter==='all' && !anyNew){
     const deadN = (rep.dead||[]).length;
     h += '<div class="rr-empty">새로운 변동 없음 👍' + (deadN? ' <span style="color:var(--text-muted)">(사라진 채널 '+deadN+'개는 그대로)</span>':'') + '</div>';
+  }
+  if (rep.skipped && rep.skipped > 0 && __rpFilter==='all'){
+    h += '<div style="font-size:12px;color:var(--text-muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">ℹ️ 채널ID가 없어 새로고침에서 제외된 항목: ' + rep.skipped + '개 (예전에 CSV로 직접 만든 항목일 수 있어요)</div>';
   }
   document.getElementById('rr-body').innerHTML = h;
 }
@@ -3417,7 +3423,8 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         <div style="margin-bottom:4px;padding-left:16px;">• <b style="color:var(--danger);">⚠️ 사라짐</b> — 조회에 응답이 없는 채널. 삭제·정지되었거나 계정이 비공개된 경우예요. 데이터는 지우지 않고 표시만 남겨둡니다.</div>
         <div style="margin-bottom:4px;padding-left:16px;">• <b style="color:var(--text-secondary);">🫥 영상 없음</b> — 채널은 살아있지만 영상이 전부 비공개/삭제된 상태.</div>
         <div style="margin-bottom:8px;padding-left:16px;">• <b style="color:var(--green);">🔥 급상승</b> — 지난 갱신 대비 조회수/구독자가 크게 오른 채널.</div>
-        <div style="margin-bottom:8px;">구독자·조회수 칸에는 지난 갱신 대비 <b style="color:var(--green);">▲ 증가분</b>이 초록색으로 표시됩니다. (숫자에 마우스를 올리면 어느 시점 대비인지 나와요.)</div>
+        <div style="margin-bottom:8px;">구독자·조회수 칸에는 <b style="color:var(--green);">▲ 증가분</b>이 초록색으로 표시됩니다. (숫자에 마우스를 올리면 어느 시점 대비인지 나와요.)</div>
+        <div style="margin-bottom:8px;">💡 <b style="color:var(--text-primary);">첫 새로고침</b>은 채널을 저장했을 당시 수치와 현재를 비교하고, 이후부터는 <b style="color:var(--text-primary);">직전 새로고침</b>과 비교합니다. 그래서 처음 돌려도 그동안의 변화가 바로 잡혀요.</div>
         <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📁 상태 필터</b> — 검색창 옆 드롭다운에서 급상승 / 영상없음 / 사라짐만 골라볼 수 있어요.</div>
         <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📋 결과 다시보기</b> — 새로고침 버튼 옆 "마지막 갱신: N시간 전 · 결과 다시보기"를 누르면 지난 결과를 다시 볼 수 있어요. 최근 <b style="color:var(--text-primary);">15회</b>까지 시점별로 저장되고, 결과창 위쪽에서 시점과 상태(🔥/🫥/⚠️)별로 골라볼 수 있습니다.</div>
         <div>💡 유튜브 지표는 분 단위로는 잘 안 바뀌어서 <b style="color:var(--text-primary);">하루 한 번 정도</b>가 적당해요. 24시간 안에 다시 누르면 안내창이 떠서 결과 다시보기로 안내합니다.</div>
