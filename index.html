@@ -603,6 +603,35 @@ table.selmode .sel-col { display:table-cell; }
   .btn-api-key::after { content:"🔑"; font-size:14px; }
   .btn-api-key { padding:6px 8px; }
 }
+/* ===== 일괄 새로고침 ===== */
+.row-dead td { opacity:.5; }
+.row-dead td a { text-decoration: line-through; }
+.rr-section{ margin-bottom:14px; }
+.rr-section:last-child{ margin-bottom:0; }
+.rr-head{ font-weight:700; font-size:14px; margin-bottom:6px; }
+.rr-list{ list-style:none; padding:0; margin:0; font-size:13px; line-height:1.85; color:var(--text-secondary); max-height:30vh; overflow:auto; }
+.rr-list li{ padding:2px 0; }
+.rr-up{ color:var(--green); font-weight:700; }
+.rr-down{ color:var(--text-muted); }
+.rr-dead{ color:var(--danger); font-weight:600; }
+.rr-empty{ color:var(--text-secondary); font-size:14px; text-align:center; padding:8px 0; }
+.rr-stat{ display:flex; gap:18px; flex-wrap:wrap; background:var(--bg-input); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:16px; }
+.rr-stat .rr-cell{ display:flex; flex-direction:column; gap:2px; font-size:12px; color:var(--text-muted); }
+.rr-stat b{ color:var(--text-primary); font-size:18px; }
+.ch-badge{ display:inline-block; border-radius:6px; padding:1px 6px; font-size:11px; font-weight:700; margin-right:6px; vertical-align:middle; white-space:nowrap; cursor:default; }
+.badge-dead{ background:rgba(255,68,102,.15); color:var(--danger); border:1px solid var(--danger); }
+.badge-empty{ background:rgba(153,153,170,.12); color:var(--text-secondary); border:1px solid var(--text-muted); }
+.badge-surge{ background:rgba(68,204,136,.15); color:var(--green); border:1px solid var(--green); }
+.delta-up{ display:block; font-size:11px; font-weight:700; color:var(--green); margin-top:1px; cursor:default; }
+.refresh-meta{ font-size:12px; color:var(--text-muted); display:inline-flex; align-items:center; gap:4px; }
+.refresh-meta a{ color:var(--blue); cursor:pointer; text-decoration:none; }
+.refresh-meta a:hover{ text-decoration:underline; }
+.rr-hist{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.rr-chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.rr-chip{ font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-secondary); cursor:pointer; white-space:nowrap; }
+.rr-chip:hover{ border-color:var(--text-muted); }
+.rr-chip.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-glow); }
+.rr-hist .rr-chip.active{ border-color:var(--blue); color:var(--blue); background:rgba(68,136,255,.12); }
 </style>
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png?v=marijuana3">
 <link rel="apple-touch-icon" sizes="180x180" href="./icon-180.png?v=marijuana3">
@@ -632,6 +661,7 @@ table.selmode .sel-col { display:table-cell; }
   <div class="tab" data-tab="bgm" onclick="switchTab('bgm')">🎵 BGM 모음</div>
   <div class="tab" data-tab="tchannel" onclick="switchTab('tchannel')">📱 틱톡/인스타 채널</div>
   <div class="tab" data-tab="tsource" onclick="switchTab('tsource')">📲 틱톡/인스타 소재</div>
+  <div class="tab" data-tab="guide" onclick="switchTab('guide')" style="margin-left:auto;">📖 사용설명서</div>
 </div>
 
 <!-- MAIN -->
@@ -668,6 +698,14 @@ table.selmode .sel-col { display:table-cell; }
       <select class="filter-select" id="ch-filter" onchange="renderChannelTable()">
         <option value="">전체 유형</option>
       </select>
+      <select class="filter-select" id="ch-badge-filter" onchange="onBadgeFilterChange()">
+        <option value="">전체 상태</option>
+        <option value="surge">🔥 급상승</option>
+        <option value="empty">🫥 영상 없음</option>
+        <option value="dead">⚠️ 사라짐</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="refreshAllChannels()">🔄 일괄 새로고침</button>
+      <span class="refresh-meta" id="ch-refresh-meta"></span>
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV('channel')">📥 전체 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleSelectMode('channel')">✅ 선택 내보내기</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ch-csv-input').click()">📤 가져오기</button>
@@ -1067,6 +1105,35 @@ table.selmode .sel-col { display:table-cell; }
   </div>
 </div>
 
+<!-- 일괄 새로고침 리포트 -->
+<div class="modal-overlay" id="refreshReportModal">
+  <div class="modal" style="max-width:500px;">
+    <button class="modal-close" onclick="closeRefreshReport()">✕</button>
+    <h2 id="rr-title" style="margin-bottom:14px;">🔄 채널 새로고침 결과</h2>
+    <div class="rr-hist" id="rr-hist"></div>
+    <div class="rr-chips" id="rr-chips"></div>
+    <div id="rr-body"></div>
+    <div style="margin-top:18px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="closeRefreshReport()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 24시간 내 재새로고침 안내 -->
+<div class="modal-overlay" id="refreshGuardModal">
+  <div class="modal" style="max-width:420px;">
+    <h2 style="margin-bottom:12px;">🔄 오늘 이미 새로고침했어요</h2>
+    <div style="font-size:14px;line-height:1.9;color:var(--text-secondary);margin-bottom:18px;">
+      조회수·구독자는 아직 거의 안 변했을 거예요.<br>
+      바뀐 내용을 다시 보려면 <b style="color:var(--text-primary);">결과 다시보기</b>를 눌러주세요.
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="closeRefreshGuard();openLastReport();">📋 결과 다시보기</button>
+      <button class="btn btn-secondary" style="flex:0 0 auto;" onclick="closeRefreshGuard();doRefreshChannels();">그래도 새로고침</button>
+    </div>
+  </div>
+</div>
+
 <!-- EASTER EGG MODAL -->
 <div class="modal-overlay" id="easterModal">
   <div class="modal" style="max-width:420px;text-align:center;padding:32px;">
@@ -1152,6 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkUsageReset();
   updateUsageUI();
   renderChannelTable();
+  updateRefreshMeta();
   renderSourceTable();
   renderBgmTable();
   updateFilterOptions();
@@ -1185,6 +1253,7 @@ function switchTab(tab) {
   document.getElementById('tab-bgm').style.display = tab === 'bgm' ? '' : 'none';
   document.getElementById('tab-tchannel').style.display = tab === 'tchannel' ? '' : 'none';
   document.getElementById('tab-tsource').style.display = tab === 'tsource' ? '' : 'none';
+  document.getElementById('tab-guide').style.display = tab === 'guide' ? '' : 'none';
 }
 
 // ===== BGM =====
@@ -1768,6 +1837,219 @@ function clearSourceInputs() {
   document.getElementById('src-ct-label').textContent = '콘텐츠 유형 선택';
 }
 
+// ===== 일괄 새로고침 (채널 전용) =====
+let __refreshing = false;
+function chunkArr(a, n){ const o=[]; for(let i=0;i<a.length;i+=n) o.push(a.slice(i,i+n)); return o; }
+function isUcId(v){ return typeof v==='string' && /^UC[\w-]{20,}$/.test(v); }
+function sgn(n){ return (n>0?'+':'') + fmtNum(n); }
+
+// --- 배지/증감 헬퍼 (renderChannelTable에서 사용) ---
+function channelBadge(c){
+  if (c.dead)    return '<span class="ch-badge badge-dead" title="일괄 새로고침 시 응답 없음 — 채널 삭제·정지 또는 비공개 가능성">⚠️ 사라짐</span> ';
+  if (c.emptied) return '<span class="ch-badge badge-empty" title="영상이 전부 비공개 또는 삭제됨">🫥 영상 없음</span> ';
+  if (c.surged)  return '<span class="ch-badge badge-surge" title="지난 갱신 대비 조회수·구독자 급상승">🔥 급상승</span> ';
+  return '';
+}
+function deltaTitle(c){
+  return c.refreshedAt ? ('지난 갱신(' + fmtWhen(c.refreshedAt) + ') 대비') : '지난 갱신 대비';
+}
+function fmtWhen(iso){
+  try{
+    const d = new Date(iso);
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mi = String(d.getMinutes()).padStart(2,'0');
+    return mm + '.' + dd + ' ' + hh + ':' + mi;
+  }catch(e){ return ''; }
+}
+function timeAgo(iso){
+  const ms = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(ms/60000);
+  if (mins < 1) return '방금';
+  if (mins < 60) return mins + '분 전';
+  const hrs = Math.floor(mins/60);
+  if (hrs < 24) return hrs + '시간 전';
+  return Math.floor(hrs/24) + '일 전';
+}
+
+// --- 마지막 갱신 안내 (툴바) ---
+function getLastRefresh(){ return localStorage.getItem('dontong_ch_lastRefresh') || ''; }
+function updateRefreshMeta(){
+  const el = document.getElementById('ch-refresh-meta');
+  if (!el) return;
+  const last = getLastRefresh();
+  el.innerHTML = last ? ('마지막 갱신: ' + timeAgo(last) + ' · <a onclick="openLastReport()">결과 다시보기</a>') : '';
+}
+
+// --- 히스토리 (최근 15회) ---
+function loadHistory(){
+  try{ return JSON.parse(localStorage.getItem('dontong_ch_history') || '[]'); }catch(e){ return []; }
+}
+function saveHistory(arr){
+  localStorage.setItem('dontong_ch_history', JSON.stringify(arr.slice(0, 15)));
+}
+
+// --- 새로고침 진입점 (24시간 가드) ---
+function refreshAllChannels(){
+  if (__refreshing) return;
+  const last = getLastRefresh();
+  if (last && (Date.now() - new Date(last).getTime()) < 24*60*60*1000){
+    document.getElementById('refreshGuardModal').classList.add('open');
+    return;
+  }
+  doRefreshChannels();
+}
+function closeRefreshGuard(){ document.getElementById('refreshGuardModal').classList.remove('open'); }
+
+// --- 실제 새로고침 수행 ---
+async function doRefreshChannels(){
+  if (__refreshing) return;
+  const key = getApiKey();
+  if (!key){ toast('API 키를 먼저 설정해주세요','error'); openApiModal(); return; }
+  if (!channels.length){ toast('갱신할 채널이 없습니다','error'); return; }
+  const withId = channels.filter(c => isUcId(c.channelId));
+  const skipped = channels.length - withId.length;
+  if (!withId.length){ toast('채널ID가 저장된 항목이 없어 새로고침할 수 없습니다','error'); return; }
+
+  __refreshing = true;
+  toast('🔄 채널 ' + withId.length + '개 갱신 중…');
+  const fresh = {};
+  try{
+    for (const ids of chunkArr(withId.map(c=>c.channelId), 50)){
+      const url = 'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=' + ids.join(',') + '&key=' + key;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(await apiErrorMessage(res));
+      const data = await res.json();
+      addUsage(3);
+      (data.items||[]).forEach(it=>{
+        fresh[it.id] = {
+          subs: parseInt(it.statistics.subscriberCount)||0,
+          videos: parseInt(it.statistics.videoCount)||0,
+          views: parseInt(it.statistics.viewCount)||0
+        };
+      });
+    }
+  }catch(e){ __refreshing=false; toast('오류: '+e.message,'error'); return; }
+
+  const now = new Date().toISOString();
+  const rep = { at: now, total: withId.length, updated:0, dead:[], newDead:[], revived:[], surged:[], emptied:[] };
+
+  channels.forEach(c=>{
+    if (!isUcId(c.channelId)) return;
+    const f = fresh[c.channelId];
+    if (!f){
+      if (!c.dead){ c.dead=true; c.deadAt=now; rep.newDead.push(c.name); }
+      c.emptied=false; c.surged=false;
+      rep.dead.push(c.name);
+      return;
+    }
+    if (c.dead){ delete c.dead; delete c.deadAt; rep.revived.push(c.name); }
+
+    const os=c.subs||0, ov=c.views||0, od=c.videos||0;
+    // 이번 회차 기준값 항상 기록 (직전 회차 대비 증감용)
+    c.subsPrev=os; c.viewsPrev=ov; c.videosPrev=od;
+
+    const vJump = ov>0 ? (f.views-ov)/ov : 0;
+    const sJump = os>0 ? (f.subs-os)/os : 0;
+    c.surged = ((vJump>=0.2 && f.views-ov>=10000) || (sJump>=0.2 && f.subs-os>=1000));
+    if (c.surged) rep.surged.push({name:c.name, s:f.subs-os, v:f.views-ov});
+
+    c.emptied = (f.videos===0);
+    if (od>0 && f.videos===0) rep.emptied.push(c.name);
+
+    if (f.subs!==os || f.views!==ov || f.videos!==od) rep.updated++;
+    c.subs=f.subs; c.views=f.views; c.videos=f.videos;
+    c.refreshedAt=now;
+  });
+
+  localStorage.setItem('dontong_channels', JSON.stringify(channels));
+  localStorage.setItem('dontong_ch_lastRefresh', now);
+  const hist = loadHistory();
+  hist.unshift(rep);
+  saveHistory(hist);
+
+  renderChannelTable();
+  updateRefreshMeta();
+  __refreshing=false;
+  openReportAt(0);
+}
+
+// --- 결과창 (히스토리 뷰어) ---
+let __rpIdx = 0;
+let __rpFilter = 'all';
+
+function openLastReport(){ openReportAt(0); }
+function openReportAt(i){
+  const hist = loadHistory();
+  if (!hist.length){ toast('아직 새로고침 기록이 없습니다'); return; }
+  __rpIdx = Math.max(0, Math.min(i, hist.length-1));
+  __rpFilter = 'all';
+  renderReport();
+  document.getElementById('refreshReportModal').classList.add('open');
+}
+function setReportFilter(f){ __rpFilter=f; renderReport(); }
+function setReportIdx(i){ __rpIdx=i; __rpFilter='all'; renderReport(); }
+function closeRefreshReport(){ document.getElementById('refreshReportModal').classList.remove('open'); }
+
+function renderReport(){
+  const hist = loadHistory();
+  const rep = hist[__rpIdx];
+  if (!rep) return;
+
+  document.getElementById('rr-hist').innerHTML = hist.map((h,i)=>{
+    const label = i===0 ? ('최신 · ' + fmtWhen(h.at)) : fmtWhen(h.at);
+    return '<span class="rr-chip'+(i===__rpIdx?' active':'')+'" onclick="setReportIdx('+i+')">'+label+'</span>';
+  }).join('');
+
+  const chips = [
+    ['all','전체'],
+    ['surge','🔥 급상승 '+((rep.surged||[]).length)],
+    ['empty','🫥 영상없음 '+((rep.emptied||[]).length)],
+    ['dead','⚠️ 사라짐 '+((rep.dead||[]).length)]
+  ];
+  document.getElementById('rr-chips').innerHTML = chips.map(function(kv){
+    return '<span class="rr-chip'+(__rpFilter===kv[0]?' active':'')+'" onclick="setReportFilter(\''+kv[0]+'\')">'+kv[1]+'</span>';
+  }).join('');
+
+  const sec = (icon, title, inner) => '<div class="rr-section"><div class="rr-head">'+icon+' '+title+'</div>'+inner+'</div>';
+  const listOf = (arr, cls, fmt) => '<ul class="rr-list">'+arr.map(x=>'<li class="'+cls+'">'+fmt(x)+'</li>').join('')+'</ul>';
+  const show = k => (__rpFilter==='all' || __rpFilter===k);
+
+  let h = '';
+  h += '<div class="rr-stat">'
+     + '<div class="rr-cell">확인<b>'+fmtNum(rep.total)+'</b></div>'
+     + '<div class="rr-cell">변동<b style="color:var(--green)">'+fmtNum(rep.updated)+'</b></div>'
+     + '<div class="rr-cell">사라짐<b style="color:var(--danger)">'+fmtNum((rep.dead||[]).length)+'</b></div>'
+     + '</div>';
+
+  if (show('surge') && rep.surged && rep.surged.length){
+    h += sec('🔥','급상승', listOf(rep.surged,'rr-up', x =>
+      esc(x.name)+' <span style="color:var(--text-muted)">(조회수 '+sgn(x.v)+(x.s?', 구독 '+sgn(x.s):'')+')</span>'));
+  }
+  if (show('empty') && rep.emptied && rep.emptied.length){
+    h += sec('🫥','영상 전부 사라짐 (비공개/삭제)', listOf(rep.emptied,'rr-down', esc));
+  }
+  if (show('dead') && rep.dead && rep.dead.length){
+    const newSet = {};
+    (rep.newDead||[]).forEach(n=>{ newSet[n]=1; });
+    const fmtDead = n => esc(n) + (newSet[n] ? ' <span style="color:var(--danger);font-size:11px;">🆕 이번에</span>' : '');
+    h += sec('⚠️','응답 없는 채널 (삭제·정지·비공개 가능성)',
+      listOf(rep.dead,'rr-dead', fmtDead)
+      + '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">표에 ⚠️ 사라짐으로 표시돼 있어요. 데이터는 지우지 않았으니 직접 확인 후 정하면 됩니다.</div>');
+  }
+  if (__rpFilter==='all' && rep.revived && rep.revived.length){
+    h += sec('✅','다시 살아난 채널', listOf(rep.revived,'', esc));
+  }
+
+  const anyNew = (rep.updated>0) || ((rep.newDead||[]).length) || ((rep.surged||[]).length) || ((rep.emptied||[]).length);
+  if (__rpFilter==='all' && !anyNew){
+    const deadN = (rep.dead||[]).length;
+    h += '<div class="rr-empty">새로운 변동 없음 👍' + (deadN? ' <span style="color:var(--text-muted)">(사라진 채널 '+deadN+'개는 그대로)</span>':'') + '</div>';
+  }
+  document.getElementById('rr-body').innerHTML = h;
+}
+
 // ===== NUMBER FORMAT =====
 function fmtNum(n) {
   if (n >= 1e8) return (n/1e8).toFixed(1) + '억';
@@ -2017,8 +2299,12 @@ function renderChannelTable() {
   if (selectMode.channel) updateSelectBar('channel');
   const search = document.getElementById('ch-search').value.toLowerCase();
   const filter = document.getElementById('ch-filter').value;
+  const badgeFilter = (document.getElementById('ch-badge-filter')||{}).value || '';
   let data = channels.filter(c => {
     if (filter && c.type !== filter) return false;
+    if (badgeFilter==='dead'  && !c.dead) return false;
+    if (badgeFilter==='empty' && !(c.emptied && !c.dead)) return false;
+    if (badgeFilter==='surge' && !(c.surged && !c.dead && !c.emptied)) return false;
     if (search) {
       return (c.name||'').toLowerCase().includes(search) ||
              (c.reason||'').toLowerCase().includes(search) ||
@@ -2042,6 +2328,10 @@ function renderChannelTable() {
       return chSort.asc ? va.localeCompare(vb) : vb.localeCompare(va);
     });
   }
+  else if (badgeFilter === 'surge') {
+    // 급상승 필터: 조회수 증가분(직전 갱신 대비) 큰 순
+    data.sort((a,b) => ((b.views||0)-(b.viewsPrev||0)) - ((a.views||0)-(a.viewsPrev||0)));
+  }
   // 즐겨찾기는 정렬과 무관하게 항상 맨 위로 고정
   data.sort((a,b) => (b.fav?1:0) - (a.fav?1:0));
 
@@ -2058,17 +2348,21 @@ function renderChannelTable() {
 
   tbody.innerHTML = data.map(c => {
     const avgViews = c.videos > 0 ? Math.round(c.views / c.videos) : 0;
+    const badge = channelBadge(c);
+    const dTitle = deltaTitle(c);
+    const subsUp  = (c.subsPrev!=null  && c.subs  > c.subsPrev)  ? `<span class="delta-up" title="${esc(dTitle)}">▲${fmtNum(c.subs  - c.subsPrev)}</span>`  : '';
+    const viewsUp = (c.viewsPrev!=null && c.views > c.viewsPrev) ? `<span class="delta-up" title="${esc(dTitle)}">▲${fmtNum(c.views - c.viewsPrev)}</span>` : '';
     return `
-    <tr>
+    <tr class="${c.dead?'row-dead':''}">
       ${selCell('channel',c.id)}
-      <td>${c.url
+      <td>${badge}${c.url
         ? `<a href="${esc(safeUrl(c.url))}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>`
         : (c.channelId
             ? `<a href="https://www.youtube.com/channel/${encodeURIComponent(c.channelId)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a>`
             : esc(c.name))}</td>
-      <td>${fmtNum(c.subs)}</td>
+      <td>${fmtNum(c.subs)}${subsUp}</td>
       <td>${fmtNum(c.videos)}</td>
-      <td>${fmtNum(c.views)}</td>
+      <td>${fmtNum(c.views)}${viewsUp}</td>
       <td>${fmtNum(avgViews)}</td>
       <td>${esc(c.type||'-')}</td>
       <td>${esc(c.reason||'-')}</td>
@@ -2191,6 +2485,11 @@ function hideSrcThumb() {
 }
 
 // ===== SORTING =====
+function onBadgeFilterChange(){
+  const v = (document.getElementById('ch-badge-filter')||{}).value || '';
+  if (v === 'surge'){ chSort.key = null; updateSortArrows('ch', chSort); }
+  renderChannelTable();
+}
 function sortChannel(key) {
   if (chSort.key === key) chSort.asc = !chSort.asc;
   else { chSort.key = key; chSort.asc = true; }
@@ -3010,19 +3309,17 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 </script>
 
-<!-- ===== 사용설명서 ===== -->
-<div style="max-width:1200px;margin:40px auto 20px;padding:0 24px;">
+<!-- ===== 사용설명서 (탭) ===== -->
+<div id="tab-guide" class="tab-content" style="display:none;max-width:1200px;margin:24px auto;padding:0 24px;">
 <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;overflow:hidden;">
 
   <!-- 헤더 -->
-  <div onclick="document.getElementById('guideBody').classList.toggle('guide-open');this.querySelector('.guide-chevron').classList.toggle('guide-chevron-open')"
-       style="padding:20px 24px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
-    <span style="font-size:18px;font-weight:700;">📖 사용설명서 <span style="font-size:13px;color:var(--text-muted);font-weight:400;">(클릭하면 펼쳐집니다)</span></span>
-    <span class="guide-chevron" style="font-size:20px;transition:transform .2s;">▼</span>
+  <div style="padding:20px 24px;display:flex;align-items:center;background:var(--bg-secondary);border-bottom:1px solid var(--border);">
+    <span style="font-size:18px;font-weight:700;">📖 사용설명서</span>
   </div>
 
   <!-- 본문 -->
-  <div id="guideBody" style="display:none;padding:24px;font-size:14px;line-height:2;color:var(--text-secondary);">
+  <div id="guideBody" style="display:block;padding:24px;font-size:14px;line-height:2;color:var(--text-secondary);">
 
     <!-- STEP 0 -->
     <div style="margin-bottom:32px;">
@@ -3108,6 +3405,22 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
         <div style="margin-bottom:4px;padding-left:16px;">• <b>✏️</b> — 수정 팝업 열기 (유형, 스크랩이유, 레퍼런스, 결 수정 가능)</div>
         <div style="margin-bottom:8px;padding-left:16px;">• <b>🗑️</b> — 삭제 (확인 팝업이 뜹니다)</div>
         <div>💡 채널명/제목을 클릭하면 유튜브 새 탭으로 열립니다!</div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div style="margin-bottom:32px;">
+      <div style="font-size:16px;font-weight:700;color:var(--accent);margin-bottom:12px;">🔄 STEP 6. 채널 일괄 새로고침 (변동 감지)</div>
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <div style="margin-bottom:8px;">📺 채널 벤치마킹 탭 툴바의 <b style="color:var(--text-primary);">🔄 일괄 새로고침</b>을 누르면, 저장된 채널을 한 번에 다시 조회해서 구독자·영상수·조회수를 최신으로 갱신합니다.</div>
+        <div style="margin-bottom:8px;">끝나면 <b style="color:var(--text-primary);">무엇이 바뀌었는지 결과창</b>이 뜨고, 채널명 옆에 상태 배지가 붙어요. (배지에 마우스를 올리면 뜻이 나옵니다.)</div>
+        <div style="margin-bottom:4px;padding-left:16px;">• <b style="color:var(--danger);">⚠️ 사라짐</b> — 조회에 응답이 없는 채널. 삭제·정지되었거나 계정이 비공개된 경우예요. 데이터는 지우지 않고 표시만 남겨둡니다.</div>
+        <div style="margin-bottom:4px;padding-left:16px;">• <b style="color:var(--text-secondary);">🫥 영상 없음</b> — 채널은 살아있지만 영상이 전부 비공개/삭제된 상태.</div>
+        <div style="margin-bottom:8px;padding-left:16px;">• <b style="color:var(--green);">🔥 급상승</b> — 지난 갱신 대비 조회수/구독자가 크게 오른 채널.</div>
+        <div style="margin-bottom:8px;">구독자·조회수 칸에는 지난 갱신 대비 <b style="color:var(--green);">▲ 증가분</b>이 초록색으로 표시됩니다. (숫자에 마우스를 올리면 어느 시점 대비인지 나와요.)</div>
+        <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📁 상태 필터</b> — 검색창 옆 드롭다운에서 급상승 / 영상없음 / 사라짐만 골라볼 수 있어요.</div>
+        <div style="margin-bottom:8px;"><b style="color:var(--text-primary);">📋 결과 다시보기</b> — 새로고침 버튼 옆 "마지막 갱신: N시간 전 · 결과 다시보기"를 누르면 지난 결과를 다시 볼 수 있어요. 최근 <b style="color:var(--text-primary);">15회</b>까지 시점별로 저장되고, 결과창 위쪽에서 시점과 상태(🔥/🫥/⚠️)별로 골라볼 수 있습니다.</div>
+        <div>💡 유튜브 지표는 분 단위로는 잘 안 바뀌어서 <b style="color:var(--text-primary);">하루 한 번 정도</b>가 적당해요. 24시간 안에 다시 누르면 안내창이 떠서 결과 다시보기로 안내합니다.</div>
       </div>
     </div>
 
