@@ -2024,7 +2024,7 @@ function renderReport(){
      + '</div>';
 
   if (show('surge') && rep.surged && rep.surged.length){
-    h += sec('🔥','급상승', listOf(rep.surged,'rr-up', x =>
+    h += sec('🔥','급상승', listOf([...rep.surged].sort((a,b)=>(b.v||0)-(a.v||0)),'rr-up', x =>
       esc(x.name)+' <span style="color:var(--text-muted)">(조회수 '+sgn(x.v)+(x.s?', 구독 '+sgn(x.s):'')+')</span>'));
   }
   if (show('empty') && rep.emptied && rep.emptied.length){
